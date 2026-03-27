@@ -1,0 +1,43 @@
+======================= Git ======================
+Install
+    winget install --id Git.Git -e --source winget
+Locate folder
+    %LOCALAPPDATA%\Programs\Git\
+Add to PATH 
+    $env:Path += ";$env:USERPROFILE\AppData\Local\Programs\Git\bin".
+Check
+    git --version
+Clone repository
+    git clone https://github.com/JeanRosselVallee/BlentPythonProject.git
+Add .gitconfig & include in .gitignore
+
+======================== Python ====================
+Install Python extension proposed by VScode
+Install Python 3.13 on terminal
+    winget search pytho
+    winget install --id 9PNRBTZXMB4Z
+    python --version
+    [[$env:Path += ";$env:LOCALAPPDATA\Microsoft\WindowsApps"]]
+Set interpreter
+    ^CTRL+P typed "Python: Select Interpreter" = python 3.13
+
+======================== Environment ====================
+Create project's environment
+    python -m venv .venv
+    Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+    .\.venv\Scripts\activate
+Install packages
+    pip install -r requirements.txt
+Exit
+    deactivate
+
+========================= Execution ======================
+Run app & create DB
+    python run.py
+
+========================= SQ Lite ========================
+Install "SQLite" by alexcvzz 
+    Left Bar "Extensions"
+    Select DB Connection
+    Right click => Run query
+
