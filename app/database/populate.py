@@ -1,9 +1,8 @@
 import random
 from datetime import datetime, timedelta
 from faker import Faker
-from app import app, db
-# Ensure the import path matches your actual file structure
-from BlentPythonProject.app.db.db_modelisation import Utilisateur, Produit, Commande, LigneCommande
+from app import app, db   # imports Flask app & SQLAlchemy db from init.py
+from app.database.model import Utilisateur, Produit, Commande, LigneCommande
 
 # Initialize Faker with French locale for realistic French names/addresses
 fake = Faker('fr_FR')

@@ -34,7 +34,8 @@ Exit
 ========================= Execution ======================
 Run app & create DB
     python run.py
-
+Populate DB
+    python -m app.database.populate
 ========================= SQ Lite ========================
 Install "SQLite" by alexcvzz 
     Left Bar "Extensions"
