@@ -1,7 +1,7 @@
 from .. import db
+#from ../app import db
 
 from datetime import datetime
-from .. import db
 
 class Utilisateur(db.Model):
     __tablename__ = 'utilisateur'

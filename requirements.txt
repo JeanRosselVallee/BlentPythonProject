@@ -1,4 +1,6 @@
 flask
 flask-sqlalchemy
 flask-migrate
-Faker # For generating fake data
+Faker # generate fake data
+requests # test HTTP responses
+pyjwt # authentication by token
