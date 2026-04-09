@@ -3,6 +3,10 @@ from datetime import datetime, timedelta
 from faker import Faker
 from app import app, db   # imports Flask app & SQLAlchemy db from init.py
 from app.database.model import Utilisateur, Produit, Commande, LigneCommande
+from werkzeug.security import generate_password_hash
+
+# Set number of records per table
+NUM_RECORDS = 10
 
 # Initialize Faker with French locale for realistic French names/addresses
 fake = Faker('fr_FR')
@@ -16,14 +20,15 @@ def seed_database():
         db.session.query(Produit).delete()
         db.session.query(Utilisateur).delete()
         
-        # 1. Generate 50 Users
+        # 1. Generate Users
         print("Generating users...")
         utilisateurs = []
-        for _ in range(50):
+        for _ in range(NUM_RECORDS):
             user = Utilisateur(
                 nom=fake.name(),
                 email=fake.unique.email(),
-                mot_de_passe="pbkdf2:sha256:250000$hash_example", # Placeholder hash
+                #mot_de_passe="pbkdf2:sha256:250000$hash_example", # Placeholder hash
+                mot_de_passe=generate_password_hash("blent"),  # test password
                 role=random.choice(['client', 'client', 'admin']),
                 date_creation=fake.date_time_between(start_date='-1y', end_date='now')
             )
@@ -42,7 +47,7 @@ def seed_database():
         }
 
         produits = []
-        for _ in range(50):
+        for _ in range(NUM_RECORDS):
             # Pick a random category from our dictionary keys
             cat_info = random.choice(list(DATA_INFO.keys()))
             
@@ -72,10 +77,10 @@ def seed_database():
         # Flush to get product & user IDs for the order lines
         db.session.flush() # < commit
 
-        # 3. Generate 50 Orders
+        # 3. Generate Orders
         print("Generating orders...")
         commandes = []
-        for _ in range(50):
+        for _ in range(NUM_RECORDS):
             random_user = random.choice(utilisateurs)
             cmd = Commande(
                 utilisateur_id=random_user.id,
@@ -89,9 +94,9 @@ def seed_database():
         # Flush to get Order IDs for the line items
         db.session.flush() # < commit
 
-        # 4. Generate 50 Order Line Items
+        # 4. Generate Order Line Items
         print("Generating order line items...")
-        for _ in range(50):
+        for _ in range(NUM_RECORDS * 2):  
             random_cmd = random.choice(commandes)
             random_prod = random.choice(produits)
             
@@ -105,7 +110,7 @@ def seed_database():
 
         # Final commit to save all changes permanently
         db.session.commit()
-        print("Success! The database has been populated with 50 rows per table.")
+        print("Success! The database has been populated.")
 
 if __name__ == "__main__":
     seed_database()
