@@ -20,13 +20,13 @@ def check_response(resp, test_goal):
         print(f"{goal} failed : {resp.json().get('error')}")
     return response_OK
 
-def authenticate(username, password):
+def authenticate(email, password):
     """
     Authenticates with the server and returns the token.
     """
     resp = requests.post(
         f"http://{HOST}:{PORT}/authenticate", 
-        json={      "username": username,
+        json={      "email": email,
                     "password": password})
     if check_response(resp, "Authenticate"):
         token = json.loads(resp.content)["token"]

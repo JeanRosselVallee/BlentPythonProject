@@ -1,5 +1,4 @@
 from .. import db
-#from ../app import db
 
 from datetime import datetime
 
@@ -11,12 +10,13 @@ class Utilisateur(db.Model):
     nom = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='client')
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Relationship to link orders to a user
     commandes = db.relationship('Commande', backref='client', lazy=True)
 
+
 class Produit(db.Model):
-    __tablename__ = 'produit'
+    __tablename__ = "produit"
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -24,6 +24,7 @@ class Produit(db.Model):
     prix = db.Column(db.Float, nullable=False)
     quantite_stock = db.Column(db.Integer, nullable=False, default=0)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class Commande(db.Model):
     __tablename__ = 'commande'

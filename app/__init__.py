@@ -3,7 +3,6 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify
 from werkzeug.security import check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
 from .app_utils import generate_token, verify_token, get_items, check_fields
 
 db = SQLAlchemy()
@@ -82,40 +81,40 @@ def create_app():
         try:
             email = request.args.get('email')
             user_in_db = Utilisateur.query.filter_by(email=email).first()
-            if user_in_db.role == 'admin':                
-                body = request.get_json()
-                status_is_missing = (not check_fields(body, {'status'}))            
-                if status_is_missing:
-                    return jsonify({'error': "Missing status."}), 400            
-                order = Commande.query.get(order_id)
-                if not order:
-                    return jsonify({'error': 'Order not found.'}), 404
-                order.statut = body['status']
-                db.session.commit()
-                return get_order_by_id(order_id) 
-            else:
+            if user_in_db.role != 'admin':
                 return jsonify({'error': 'User not authorized to update orders.'}), 403
+            body = request.get_json()
+            status_is_missing = (not check_fields(body, {'status'}))            
+            if status_is_missing:
+                return jsonify({'error': "Missing status."}), 400            
+            order = Commande.query.get(order_id)
+            if not order:
+                return jsonify({'error': 'Order not found.'}), 404
+            order.statut = body['status']
+            db.session.commit()
+            return get_order_by_id(order_id) 
+                
         except Exception as e:
             return jsonify({'error': str(e)}), 400
             
     @app.route('/authenticate', methods=['POST'])
     def authenticate():
         body = request.get_json()
-        credentials_are_missing = (not check_fields(body, {'username', 'password'}))
+        credentials_are_missing = (not check_fields(body, {'email', 'password'}))
         if credentials_are_missing:
             return jsonify({'error': "Missing credentials."}), 400
-        user_in_request = body['username']
-        password_in_request = body['password']
+        email_in_request = body['email']
+        passw_in_request = body['password']
         # Get Password in DB
-        user_in_db = Utilisateur.query.filter_by(email=user_in_request).first()
+        user_in_db = Utilisateur.query.filter_by(email=email_in_request).first()
         if not user_in_db:
-            return jsonify({'error': f'User {user_in_request} not found in DB'}), 404
-        password_in_db = user_in_db.mot_de_passe
-              
+            return jsonify({'error': f'User {email_in_request} not found in DB'}), 404
+        login = user_in_db.email
+        passw = user_in_db.mot_de_passe
         # Check Password
-        passwords_are_identical = (check_password_hash(password_in_db, password_in_request))
+        passwords_are_identical = (check_password_hash(passw, passw_in_request))
         if passwords_are_identical:
-            token = generate_token(user_in_db.email)
+            token = generate_token(login)
             return jsonify({'token': token}), 200
         else:
             return jsonify({'error': 'Invalid credentials'}), 401

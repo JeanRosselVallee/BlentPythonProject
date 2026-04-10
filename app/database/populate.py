@@ -1,9 +1,8 @@
-import random
-from datetime import datetime, timedelta
-from faker import Faker
 from app import app, db   # imports Flask app & SQLAlchemy db from init.py
 from app.database.model import Utilisateur, Produit, Commande, LigneCommande
 from werkzeug.security import generate_password_hash
+import random
+from faker import Faker  # generate realistic fake data
 
 # Set number of records per table
 NUM_RECORDS = 10
@@ -27,7 +26,6 @@ def seed_database():
             user = Utilisateur(
                 nom=fake.name(),
                 email=fake.unique.email(),
-                #mot_de_passe="pbkdf2:sha256:250000$hash_example", # Placeholder hash
                 mot_de_passe=generate_password_hash("blent"),  # test password
                 role=random.choice(['client', 'client', 'admin']),
                 date_creation=fake.date_time_between(start_date='-1y', end_date='now')
@@ -35,7 +33,7 @@ def seed_database():
             utilisateurs.append(user)
             db.session.add(user)
         
-        # 2. Setup IT Hardware Data
+        # 2. Prepare values for field "model"
         print("Generating IT hardware products...")
         DATA_INFO = {
             'Processeur': ['Intel Core i9', 'AMD Ryzen 7', 'Intel Core i5', 'Apple M2'],
@@ -104,11 +102,11 @@ def seed_database():
                 commande_id=random_cmd.id,
                 produit_id=random_prod.id,
                 quantite=random.randint(1, 5),
-                prix_unitaire=random_prod.prix  # Snapshot of product price at time of purchase
+                prix_unitaire=random_prod.prix 
             )
             db.session.add(line)
 
-        # Final commit to save all changes permanently
+        # Commit: save all changes permanently
         db.session.commit()
         print("Success! The database has been populated.")
 
