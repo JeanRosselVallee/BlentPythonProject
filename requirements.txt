@@ -4,3 +4,5 @@ flask-migrate
 Faker # generate fake data
 requests # test HTTP responses
 pyjwt # authentication by token
+flake8 # check code style
+pytest # testing
