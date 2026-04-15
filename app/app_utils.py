@@ -7,25 +7,30 @@ SECRET_PHRASE = "d3fb12750c2eff92120742e1b334479e"
 
 
 # Token Generation for Authentication
-def generate_token(username):
+def generate_json_token(user_login):
     now = datetime.now(timezone.utc)
     expire_time = now + timedelta(hours=1)
     token = jwt.encode(
-        {"expire_time": expire_time.timestamp(), "user": username},
+        {   "expire_time": expire_time.timestamp(), 
+            "login": user_login, 
+        },
         SECRET_PHRASE,
         algorithm="HS256",  # singular
     )
-    return token
+    return jsonify({"token": token})
 
 
 # Token Validity Check for Authorization
 def verify_token(token):
+    """
+    returns payload = data stored in token 
+    """
     try:
-        ret = jwt.decode(token, SECRET_PHRASE, algorithms=["HS256"])  # plural
-        return ret
-    except Exception:
-        print("Invalid JWT token.")
-        return
+        payload = jwt.decode(token, SECRET_PHRASE, algorithms=["HS256"])  # plural
+        return payload
+    except Exception as e:
+        print(f"ERROR in verify_token(): {e}")
+        return None
 
 
 # Get items from DB for Routes Definition
