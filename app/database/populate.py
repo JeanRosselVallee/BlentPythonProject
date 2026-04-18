@@ -86,7 +86,7 @@ def seed_database():
                 utilisateur_id=random_user.id,
                 date_commande=fake.date_time_between(start_date='-30d', end_date='now'),
                 adresse_livraison=fake.address().replace('\n', ' '),
-                statut=random.choice(['pending', 'paid', 'shipped', 'delivered'])
+                statut=random.choice(['en_attente', 'validée', 'expédiée', 'annulée'])
             )
             commandes.append(cmd)
             db.session.add(cmd)

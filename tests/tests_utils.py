@@ -10,10 +10,13 @@ from werkzeug.security import generate_password_hash
 HOST = "127.0.0.1"
 PORT = "5000"
 URL = f"http://{HOST}:{PORT}"
+SUCCESS_CODES = [200, 201]
 test_users = {
     "client": {
         "email": "customer@test.net",
         "password": "blent",
+        "token": None,
+        "id": None,
         "name": "Customer",
         "role": "client",
         "order_ids":[]
@@ -21,6 +24,8 @@ test_users = {
     "admin": {
         "email": "admin@test.net",
         "password": "admin",
+        "token": None,
+        "id": None,
         "name": "Admin",
         "role": "admin",
         "order_ids":[]
@@ -38,36 +43,8 @@ def check_connection_to_server():
         raise Exception("ERROR: Flask app not running.")
 
 
-def authenticate(email, password, goal):
-    """
-    Authenticate with the server and return token.
-    """
-    
-    # Get Response
-    response = requests.post(
-        f"http://{HOST}:{PORT}/authenticate",
-        json={"email": email, "password": password},
-    )    
-    response_not_OK = (not check_response(response, goal, [200, 201]))
-    if response_not_OK:
-        return None
-    
-    # Get Token
-    token = json.loads(response.content)["token"]
-    return token
-    
-
 # Get user instance from DB with his email
 get_user = lambda email: Utilisateur.query.filter_by(email=email).first()
-
-    
-def get_user_id(email):
-    """
-    Retrieve user's ID from DB with his email.
-    """
-    with app.app_context():
-        user = get_user(email)
-        return user.id
 
 def create_test_users():
     """
@@ -155,49 +132,57 @@ def delete_test_data():
                 db.session.commit()  
 
 
-def check_response(resp, test_goal, expected_statuses):
+def assert_status_to_delete(response, test_goal, expected_statuses):
     """
     Validates the HTTP response and prints formatted output.
     """
-    goal = f"API '{test_goal}'"
-    logging.info(f"{goal}")
-    logging.info(f"URL {resp.url}")
-    response_code = resp.status_code
-    response_OK = response_code in expected_statuses
-    if response_OK:
-        logging.info("Response OK")
-    else:
-        #logging.info(f"{goal} failed with status code {response_code}")
-        #logging.info(f"json.loads(resp.content)={resp.content.decode('utf-8')}")
-        logging.info(f"{resp.json().get('error')}")
-    return response_OK
 
-
-def print_response(resp, test_goal, indented=False):
-    logging.info(f"Response :")
-    #if indented:
-    #    logging.info(f"Response : {resp.content.decode('utf-8')}") # gets a string
-    #else:
-    #    logging.info(f"Response : {json.loads(resp.content)}") # gets a list of dicts
-    logging.info(f"Response : {resp.content.decode('utf-8')}") # gets a string
-
-def check_resp_status(resp, test_goal, expected_statuses):
-    """
-    Check response & status
-    """    
-
-    # Check Response
-    status_OK = (check_response(resp, test_goal, expected_statuses))
+    # Log Goal & URL
+    logging.info(f"API '{test_goal}'")
+    logging.info(f"URL {response.url}")
     
-    # Pytest Assertion
-    assert status_OK, f"{test_goal}: got status code {resp.status_code} but expected {expected_statuses}"
+    # Get Status from Response Tuple
+    status = response.status_code
+    status_OK = (status in expected_statuses)
 
     # Check Status
-    if not status_OK:
-        return None
+    if status_OK:        
+        logging.info("Response OK")
+    else:
+        logging.exception(f"{response.json().get('error')}")
 
-    # Print Response
-    print_response(resp, test_goal, indented=True)
+    return status_OK
+
+
+def assert_status(response, test_goal, expected_statuses):
+    """
+    Check Response Tuple 
+    """    
+
+   # Log Goal & URL
+    logging.info(f"API '{test_goal}'")
+    logging.info(f"URL {response.url}")
+     
+    # Get Status & Payload from Response Tuple
+    status = response.status_code
+    status_OK = (status in expected_statuses)
+    # Get indented string (from binary response.content)
+    content = response.content.decode('utf-8') 
+
+    # Log Error if any
+    error_message = f"{test_goal} got status code {response.status_code} but expected {expected_statuses}"
+    if not status_OK:
+        error_message = f"{error_message}. {response.json()['error']}"
+        logging.error(error_message)
+
+    # Log Data in Response
+    logging.info(f"Response : {content}")         
+    
+    # Pytest Assertion
+    assert status_OK, error_message
 
     # Return Response as [{...}]
-    return json.loads(resp.content)
+    return json.loads(response.content)
+    
+    
+    

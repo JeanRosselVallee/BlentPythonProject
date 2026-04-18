@@ -32,15 +32,21 @@ def verify_token(token):
         print(f"ERROR in verify_token(): {e}")
         return None
 
+# Get Email from Token
+def get_email_from_token(token):
+    payload = verify_token(token)
+    user_email = payload.login
+    return user_email
 
 # Get items from DB for Routes Definition
 def get_items(table, field=None, item_id=None):
     """
     Fetch items from DB, optionally filtered, & returned as JSON
-    parameters:
+    Parameters:
     - table: DB table
     - field (optional): filter DB column
     - item_id (optional): filter value
+    Return: string of items
     """
     if item_id:
         target_items = table.query.filter(field == item_id)
