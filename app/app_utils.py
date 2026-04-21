@@ -1,7 +1,8 @@
 import jwt
 
 from datetime import datetime, timedelta, timezone
-from flask import jsonify
+from flask import jsonify, current_app
+from sqlalchemy import text
 
 SECRET_PHRASE = "d3fb12750c2eff92120742e1b334479e"
 
@@ -48,20 +49,62 @@ def get_items(table, field=None, item_id=None):
     - item_id (optional): filter value
     Return: string of items
     """
+           
     if item_id:
         target_items = table.query.filter(field == item_id)
         nb_items = target_items.count()
+        
     else:
         target_items = table.query.all()
         nb_items = len(target_items)
     if target_items and nb_items > 0:
         items = [
-            {c.name: getattr(o, c.name) for c in o.__table__.columns}
-            for o in target_items
+            {c.name: getattr(i, c.name) for c in i.__table__.columns}
+            for i in target_items
         ]
         return jsonify(items), 200
     else:
         return jsonify({"error": "No records found"}), 404
+
+
+
+    # TO Do
+    # Update Function description & Clean up function
+def search_items(db, table, field_1, field_2, keywords):
+        '''
+        Each word should be present in at least one of the fields
+        '''
+        
+        f_name = "search_items()"
+        conditions = []
+        params = {}
+
+        # Get 1 condition per keyword
+        for i, word in enumerate(keywords):
+            concatenated_fields = f"{field_1} || ' ' || {field_2}"
+            condition = f"\n\t{concatenated_fields} LIKE :word_{i}"
+            conditions.append(condition)
+            params[f"word_{i}"] = f"%{word}%"
+
+        # Get SQL Clause with all conditions
+        sql_clause = ' AND '.join(conditions)
+
+        # Set SQL Query as a string
+        select_query = f"SELECT * FROM {table} WHERE {sql_clause}"
+        current_app.logger.debug(f"{f_name}:\n {select_query}")
+
+        # Get Results from DB
+        results = db.session.execute(text(select_query), params)
+        nb_items = results.returns_rows
+        
+        if not nb_items :  # Case Undefined
+            return jsonify({"error": "DB error"}), 404
+        if nb_items > 0:   # Case OK : Products Found
+            items = results.fetchall()
+            items_as_dicts = [dict(row._mapping) for row in items]
+            return jsonify(items_as_dicts), 200
+        else:              # Case OK : No Product found
+            return jsonify({f"message": "No records contain {keywords}"}), 204
 
 
 def check_fields(body, fields):

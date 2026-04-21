@@ -35,7 +35,7 @@ def testing_wrapper():
     try: 
         # SETUP TESTS
         logging.info("\n[Wrapper] Step 1 : Create test users in DB...")
-        tu.create_test_users() 
+        tu.create_testing_users() 
         
         # RUN TESTS
         logging.info("\n[Wrapper] Step 2 : Run tests...")
@@ -47,7 +47,7 @@ def testing_wrapper():
         tu.delete_test_data()
 
 @pytest.mark.parametrize("user", 
-                         [tu.test_users["client"], tu.test_users["admin"]], 
+                         [tu.testing_users["client"], tu.testing_users["admin"]], 
                          ids=["CLIENT", "ADMIN"])
 class Test_app:
     '''
@@ -57,8 +57,31 @@ class Test_app:
     - list of values: every method is run once per value in the list
     - ids: list of use cases for logging & pytest's target selection
     '''
+
+    # Test Create User
+    def test_register_user(self, user):
+
+        # Set Goal
+        goal = f"Register Client User"
+
+        # Set New User Data
+        new_user = tu.tested_clients.pop()
+        
+        # Get Response
+        response = requests.post(
+            f"{tu.URL}/auth/register",
+            json={
+                "email": new_user["email"],
+                "mot_de_passe": new_user["password"],
+                "nom": new_user["name"] 
+            }
+        )
+
+        # Check & Log Response       
+        tu.assert_status(response, goal, tu.SUCCESS_CODES)
+
     # Test Authenticate
-    def test_authenticate(self, user):
+    def test_login(self, user):
         """
         Authenticate with the server & Get Token.
         """
@@ -70,12 +93,12 @@ class Test_app:
 
         # Get Response
         response = requests.post(
-            f"{tu.URL}/authenticate",
+            f"{tu.URL}/auth/login",
             json={"email": email, "password": user["password"]},
             # json={"email": email, "password": "blent"}, 
         )    
 
-        # Check Response
+        # Check & Log Response
         tu.assert_status(response, goal_1, tu.SUCCESS_CODES)
 
         # Initialize User's Token        
@@ -86,6 +109,42 @@ class Test_app:
 
         # Pytest Assertion
         assert user["token"], f"{goal_2} failed."
+
+
+    # Test Create an Product
+    def test_create_product(self, user):
+
+        # Set Goal
+        goal = f"Create Product for {user['email']}"
+
+        # Get Response
+        response = requests.post(
+            f"{tu.URL}/api/produits",
+            headers={"authorization": user["token"]},
+            json={
+                "nom": "Mouse wireless Microsoft",
+                "description": "Black, rechargeable, USB-C radio emitter",
+                "categorie": "Accessories",
+                "prix": 45,
+                "quantite_stock": 30
+            }
+        )
+
+        # Get expected statuses based on user's role
+        expected_statuses = tu.get_expected_status_per_role(user["role"])   
+
+        # Check & Log Response       
+        tu.assert_status(response, goal, expected_statuses)
+
+        if user["role"] == "admin":
+            
+            # Get Created Product from Response 
+            products_list = json.loads(response.content) # contains a list with a single product
+            if products_list:
+                product = products_list[0]
+
+                # Store Order Id for other tests 
+                user["product_ids"].append(product["id"])
 
 
     # Test Get Product by ID
@@ -101,7 +160,7 @@ class Test_app:
             headers={"authorization": user["token"]},
         )
 
-        # Check Response
+        # Check & Log Response
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
 
@@ -113,10 +172,26 @@ class Test_app:
 
         # Get Response
         response = requests.get(
-            f"{tu.URL}/api/produits", headers={"authorization": user["token"]}
+            f"{tu.URL}/api/produits"    
         )
 
-        # Check Response
+        # Check & Log Response
+        tu.assert_status(response, goal, tu.SUCCESS_CODES)
+
+
+    # Test Get All Products
+    def test_search_products(self, user):
+
+        # Set Goal    
+        goal = f"Search Products with keywords by {user['email']}"
+
+        # Get Response
+        response = requests.get(
+            f"{tu.URL}/api/produits",
+            params={'keywords': ['SSD', 'Stockage']}
+        )
+
+        # Check & Log Response
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
 
@@ -124,7 +199,7 @@ class Test_app:
     def test_create_order(self, user):
 
         # Set Goal
-        goal = f"Create Order for {user['email']}"
+        goal = f"Create Order by {user['email']}"
 
         # Get Response
         response = requests.post(
@@ -135,8 +210,8 @@ class Test_app:
                 "adresse_livraison": "123, rue de la Paix, Paris"
             }
         )
-
-        # Check Response       
+        
+        # Check & Log Response       
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
         # Get Created Order from Response 
@@ -160,7 +235,7 @@ class Test_app:
             goal = f"Get Order with id {order_id} for {user['email']}"
 
             # Get expected statuses based on user's role & order's ownership
-            expected_statuses = tu.get_expected_status(user["role"], order_id, own_order_id)
+            expected_statuses = tu.get_expected_status_for_order_ownership(user["role"], order_id, own_order_id)
 
             # Get Response to Request
             response = requests.get(
@@ -168,7 +243,7 @@ class Test_app:
                 headers={"authorization": user["token"]}
             )
             
-            # Check Response
+            # Check & Log Response
             tu.assert_status(response, goal, expected_statuses)
 
 
@@ -184,7 +259,7 @@ class Test_app:
             headers={"authorization": user["token"]}
         )
 
-        # Check Response
+        # Check & Log Response
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
 
@@ -207,7 +282,7 @@ class Test_app:
             }
         )
 
-        # Check Response
+        # Check & Log Response
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
 
@@ -215,8 +290,8 @@ class Test_app:
     def test_get_order_items(self, user):
 
         # Get Client & Admin Order Id 
-        client_order_id = tu.test_users["client"]["order_ids"][0]
-        admin_order_id = tu.test_users["admin"]["order_ids"][0]
+        client_order_id = tu.testing_users["client"]["order_ids"][0]
+        admin_order_id = tu.testing_users["admin"]["order_ids"][0]
 
         # Get own Order Id
         own_order_id = user["order_ids"][0]
@@ -228,7 +303,7 @@ class Test_app:
             goal = f"Get Items of Order id {order_id} for {user['email']}"
 
             # Get expected statuses based on user's role & order's ownership
-            expected_statuses = tu.get_expected_status(user["role"], order_id, own_order_id)
+            expected_statuses = tu.get_expected_status_for_order_ownership(user["role"], order_id, own_order_id)
 
             # Get Response to Request
             response = requests.get(
@@ -236,7 +311,7 @@ class Test_app:
                 headers={"authorization": user["token"]},
             )
         
-            # Check Response
+            # Check & Log Response
             tu.assert_status(response, goal, expected_statuses)
 
 
@@ -260,13 +335,8 @@ class Test_app:
         )
 
         # Get expected statuses based on user's role
-        if user["role"] == "admin":
-            # Admin can update orders
-            expected_statuses = tu.SUCCESS_CODES
-        else:  
-            # Clients can't update orders 
-            expected_statuses = [403]
+        expected_statuses = tu.get_expected_status_per_role(user["role"])
 
-        # Check Response
+        # Check & Log Response
         tu.assert_status(response, goal, expected_statuses) 
 

@@ -11,7 +11,11 @@ HOST = "127.0.0.1"
 PORT = "5000"
 URL = f"http://{HOST}:{PORT}"
 SUCCESS_CODES = [200, 201]
-test_users = {
+
+#To DO
+# Remove test user and replace by one created with create_user() 
+
+testing_users = {
     "client": {
         "email": "customer@test.net",
         "password": "blent",
@@ -28,10 +32,23 @@ test_users = {
         "id": None,
         "name": "Admin",
         "role": "admin",
+        "product_ids":[],
         "order_ids":[]
     }
 }
 
+tested_clients = [
+    {
+        "email": "tested_client_1@test.net",
+        "password": "blent",
+        "name": "Tested Client 1",
+    },
+    {
+        "email": "tested_client_2@test.net",
+        "password": "blent",
+        "name": "Tested Client 2",
+    },
+]
 
 def check_connection_to_server():
     """
@@ -46,12 +63,12 @@ def check_connection_to_server():
 # Get user instance from DB with his email
 get_user = lambda email: Utilisateur.query.filter_by(email=email).first()
 
-def create_test_users():
+def create_testing_users():
     """
     Create test customer & admin users in DB.
     """
     with app.app_context():
-        for user in test_users.values():
+        for user in testing_users.values():
             email = user["email"]
 
             # Avoid duplicates in DB
@@ -87,7 +104,17 @@ def get_last_user_order(user_email):
         logging.info(f"Id of last order: {last_order_id}")
         return last_order_id
     
-def get_expected_status(user_role, current_order_id, last_own_order_id) :
+def get_expected_status_per_role(user_role):
+    # Get expected statuses based on user's role
+    if user_role == "admin":
+        # Admin can create orders
+        expected_statuses = SUCCESS_CODES
+    else:  
+        # Clients can't create products 
+        expected_statuses = [400, 403]
+    return expected_statuses
+
+def get_expected_status_for_order_ownership(user_role, current_order_id, last_own_order_id) :
     # Get expected statuses based on user's role & order's ownership
     user_is_admin = (user_role == "admin")
     order_is_own = (current_order_id == last_own_order_id)
@@ -97,6 +124,9 @@ def get_expected_status(user_role, current_order_id, last_own_order_id) :
         expected_statuses = [403, 404]
     return expected_statuses
 
+
+# To do delete tested products
+
 def delete_test_data():
     """
     Delete test data in DB.
@@ -104,7 +134,7 @@ def delete_test_data():
     with app.app_context():
         # Clear test data in cascade
 
-        for user in test_users.values():
+        for user in testing_users.values():
             user_instance = get_user(user["email"])
 
             if user_instance:
@@ -125,12 +155,19 @@ def delete_test_data():
                 nb_orders = orders.delete()
                 logging.info(f"Deleted {nb_orders} corresponding order(s)")
                 
-                # Delete test_users
+                # Delete testing_users
                 db.session.delete(user_instance)
                 logging.info(f"Deleted user {user['email']}.")
 
                 db.session.commit()  
 
+        # Delete Tested Users
+        for email in ["tested_client_1@test.net", "tested_client_2@test.net"]:
+            user_instance = get_user(email)
+            if user_instance:                 
+                db.session.delete(user_instance)
+                logging.info(f"Deleted user {email}.")
+                db.session.commit()  
 
 def assert_status_to_delete(response, test_goal, expected_statuses):
     """

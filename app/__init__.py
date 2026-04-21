@@ -1,9 +1,11 @@
+import app.app_utils as au  # Custom Library
+import logging
+
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash
 from functools import wraps # Preserves distinct names of functions inside a decorator
-#from .app_utils import au.generate_json_token, au.verify_token, au.get_items, au.check_fields
-import app.app_utils as au  # Custom Library
+from config import Config  # Custom ../config.py
 
 # Authorization Decorator for routes
 def requires_authorization(target_function):
@@ -38,6 +40,9 @@ db = SQLAlchemy()
 def create_app():
     app = Flask(__name__)
 
+    # Setup from ../config.py
+    # Enable to debug SQL queries in front&backend output
+    # app.config.from_object(Config) 
 
     # DB setup
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///digimarket.db"
@@ -55,10 +60,43 @@ def create_app():
 
     # ROUTES DEFINITION
 
-    # Route Authenticate
-    @app.route("/authenticate", methods=["POST"])
-    def authenticate():
-        f_name = "authenticate()"
+    # Route Register User
+    @app.route("/auth/register", methods=["POST"])
+    def register_user():
+        f_name = "register_user()"
+
+        # Get User Data from Request
+        submitted_data = request.get_json()
+        missing_fields = (not au.check_fields(
+            submitted_data, 
+            {"email", 
+             "mot_de_passe",
+             "nom"
+             }
+        ))
+        if missing_fields:
+            return jsonify({"error": "Missing fields."}), 400
+
+        # Create User in DB
+        new_user = Utilisateur(
+            email=submitted_data["email"],
+            mot_de_passe=submitted_data["mot_de_passe"],
+            nom=submitted_data["nom"]
+        )
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+        except Exception as e:
+            return jsonify({"error": f"{f_name}: {str(e)}"}), 400
+
+        # Return User as a string
+        return au.get_items(Utilisateur, Utilisateur.email, new_user.email)
+    
+    
+    # Route login
+    @app.route("/auth/login", methods=["POST"])
+    def login():
+        f_name = "login()"
 
         # Get credentials from request
         submitted_data = request.get_json()
@@ -96,11 +134,45 @@ def create_app():
         return render_template("products.html", products=all_products)
 
 
-    # Route Get All Products
-    @app.route("/api/produits", methods=["GET"])
+    # Route Create Product
+    @app.route("/api/produits", methods=["POST"])
     @requires_authorization
-    def get_products(data_in_token):
-        return au.get_items(Produit)
+    def create_product(data_in_token):
+
+        # Get User Data from DB
+        user_role = get_user_attribute_in_db(data_in_token, "role")
+
+        # Reject non-Admin Users
+        if user_role != "admin":  
+            return jsonify({"error": "User {email} not authorized to create products."}), 403
+        
+        # Get Product Data from Request
+        submitted_data = request.get_json()
+        missing_fields = (not au.check_fields(
+            submitted_data, 
+            {"nom", 
+             "description",
+             "categorie",
+             "prix",
+             "quantite_stock",
+             }
+        ))
+        if missing_fields:
+            return jsonify({"error": "Missing fields."}), 400
+        new_product = Produit(
+            nom=submitted_data["nom"],
+            description=submitted_data["description"],
+            categorie=submitted_data["categorie"],
+            prix=submitted_data["prix"],
+            quantite_stock=submitted_data["quantite_stock"]
+        )
+
+        # Create Product in DB
+        db.session.add(new_product)
+        db.session.commit()
+
+        # Return Product as a string
+        return au.get_items(Produit, Produit.id, new_product.id)
 
 
     # Route Get Product by ID
@@ -108,6 +180,53 @@ def create_app():
     @requires_authorization
     def get_product_by_id(product_id, data_in_token):
         return au.get_items(Produit, Produit.id, product_id)
+
+
+
+
+
+
+# TO DOs
+# Modifier un produit existant (PUT /api/produits/{id}) - Admin uniquement
+# Supprimer un produit (DELETE /api/produits/{id}) - Admin uniquement
+
+
+    # TO DO
+    # Search product by name or keywords in description
+    # Add a filter + search button inside webpage ??
+
+
+
+    # Route Get All Products
+    @app.route("/api/produits", methods=["GET"])
+    def get_products():
+        # try:
+        #     return au.get_items(Produit)
+        # except Exception as e:
+        #     message = f"get_products() - {str(e)}"
+        #     return jsonify({"error": f"{message}"}), 400
+
+
+        # '''
+        # Goals: Get all products from DB &
+        # Search products by keywords (if any) in name & description
+        # '''
+        
+        # Get Query Parameters
+        # keywords = request.args.get('q')
+        keywords = request.args.getlist('keywords')
+
+        if keywords:
+            # Search products by keywords in name & description
+            results = au.search_items(db, "Produit", "nom", "description", keywords)
+            
+        else:
+            # Get all products from DB  
+            results = au.get_items(Produit)
+        
+        return results
+
+
 
 
     # Route Create Order
@@ -129,7 +248,7 @@ def create_app():
         db.session.add(new_order)
         db.session.commit()
 
-        # Return Orders as a string
+        # Return Order as a string
         return au.get_items(Commande, Commande.id, new_order.id)
 
 
@@ -149,6 +268,8 @@ def create_app():
         # Client gets only own orders
         return au.get_items(Commande, Commande.utilisateur_id, user_id)
 
+# TO DO 
+# Update stock quantity
 
     # Route Add Order Item
     @app.route("/api/commandes/<int:order_id>/lignes", methods=["POST"])
@@ -164,7 +285,7 @@ def create_app():
         # Get User Id from DB
         user_id = get_user_attribute_in_db(data_in_token, "id")
 
-        # Check Order exists
+        # Check User's Pending Order exists
         order = Commande.query.filter_by(
             id=order_id,
             utilisateur_id=user_id,
