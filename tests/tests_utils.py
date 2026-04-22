@@ -12,9 +12,6 @@ PORT = "5000"
 URL = f"http://{HOST}:{PORT}"
 SUCCESS_CODES = [200, 201]
 
-#To DO
-# Remove test user and replace by one created with create_user() 
-
 testing_users = {
     "client": {
         "email": "customer@test.net",
@@ -23,6 +20,7 @@ testing_users = {
         "id": None,
         "name": "Customer",
         "role": "client",
+        "product_ids":[],
         "order_ids":[]
     },
     "admin": {
@@ -49,6 +47,14 @@ tested_clients = [
         "name": "Tested Client 2",
     },
 ]
+
+tested_product ={
+        "nom": "Mouse wireless Microsoft",
+        "description": "Black, rechargeable, USB-C radio emitter",
+        "categorie": "Accessories",
+        "prix": 45,
+        "quantite_stock": 30
+    }
 
 def check_connection_to_server():
     """
@@ -111,7 +117,7 @@ def get_expected_status_per_role(user_role):
         expected_statuses = SUCCESS_CODES
     else:  
         # Clients can't create products 
-        expected_statuses = [400, 403]
+        expected_statuses = [403]
     return expected_statuses
 
 def get_expected_status_for_order_ownership(user_role, current_order_id, last_own_order_id) :
@@ -124,8 +130,6 @@ def get_expected_status_for_order_ownership(user_role, current_order_id, last_ow
         expected_statuses = [403, 404]
     return expected_statuses
 
-
-# To do delete tested products
 
 def delete_test_data():
     """
@@ -154,6 +158,15 @@ def delete_test_data():
                 # Delete orders
                 nb_orders = orders.delete()
                 logging.info(f"Deleted {nb_orders} corresponding order(s)")
+
+                # Get testing users' products
+                product_ids = user['product_ids']
+                logging.info(f"Ids of products for user {user['email']}: {product_ids}")
+
+                # Delete products
+                products = Produit.query.filter(Produit.id.in_(product_ids))
+                nb_products = products.delete()
+                logging.info(f"Deleted {nb_products} corresponding product(s)")
                 
                 # Delete testing_users
                 db.session.delete(user_instance)

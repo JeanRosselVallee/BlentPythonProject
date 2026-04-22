@@ -121,13 +121,7 @@ class Test_app:
         response = requests.post(
             f"{tu.URL}/api/produits",
             headers={"authorization": user["token"]},
-            json={
-                "nom": "Mouse wireless Microsoft",
-                "description": "Black, rechargeable, USB-C radio emitter",
-                "categorie": "Accessories",
-                "prix": 45,
-                "quantite_stock": 30
-            }
+            json=tu.tested_product
         )
 
         # Get expected statuses based on user's role
@@ -143,8 +137,36 @@ class Test_app:
             if products_list:
                 product = products_list[0]
 
-                # Store Order Id for other tests 
+                # Store Product Id for other tests 
                 user["product_ids"].append(product["id"])
+
+    # Test Update Product
+    def test_update_product(self, user):
+
+        # Get User's Product Id
+        product_id = tu.testing_users["admin"]["product_ids"][0]
+
+        # Set Goal
+        goal = f"Update Order with id {product_id} for {user['email']}"
+
+        # Get Response to Request
+        response = requests.put(
+            f"{tu.URL}/api/produits/{product_id}",
+            headers={"authorization": user["token"]},
+            json={
+                "nom": "Mouse Microsoft XYZ123",
+                "description": "Gray, USB-C, wireless, battery",
+                "categorie": "Souris",
+                "prix": 40,
+                #"quantite_stock": 25
+            }
+        )
+
+        # Get expected statuses based on user's role
+        expected_statuses = tu.get_expected_status_per_role(user["role"])
+
+        # Check & Log Response
+        tu.assert_status(response, goal, expected_statuses) 
 
 
     # Test Get Product by ID
@@ -264,26 +286,39 @@ class Test_app:
 
 
     # Test Add Order Item
-    def test_add_order_item(self, user):
+    
+    # - test of 2 cases : in stock & out of stock
+    @pytest.mark.parametrize(
+        "test_case, quantity, expected_statuses", 
+        [
+        ("In Stock",       9, tu.SUCCESS_CODES),
+        ("Out of Stock",  95, [400, 403])
+        ],            
+        ids=["In Stock", "Out of Stock"])
 
+    def test_add_order_item(self, user, test_case, quantity, expected_statuses):
+        
         # Set Goal
-        goal = f"Add Order Item for {user['email']}"
+        goal = f"Add Order Item for {user['email']} with quantity {test_case}"
 
         # Get Order Id
         order_id = user["order_ids"][0]
+
+        # Get Tested Product Id & Initial Stock
+        product_id = tu.testing_users["admin"]["product_ids"][0]
 
         # Get Response
         response = requests.post(
             f"{tu.URL}/api/commandes/{order_id}/lignes",
             headers={"authorization": user["token"]},
             json={
-                "produit_id": 1,
-                "quantite": 2,
+                "produit_id": product_id,
+                "quantite": quantity
             }
         )
 
         # Check & Log Response
-        tu.assert_status(response, goal, tu.SUCCESS_CODES)
+        tu.assert_status(response, goal, expected_statuses)
 
 
     # Test Get Order Items
@@ -316,7 +351,7 @@ class Test_app:
 
 
     # Test Update Order
-    def test_update_order(self, user):
+    def test_update_order_status(self, user):
 
         # Get User's Order Id
         order_id = user["order_ids"][0]
@@ -328,7 +363,6 @@ class Test_app:
         response = requests.patch(
             f"{tu.URL}/api/commandes/{order_id}",
             headers={"authorization": user["token"]},
-            params={"email": user["email"]},
             json={
                 "status": "validée"
             }
@@ -340,3 +374,28 @@ class Test_app:
         # Check & Log Response
         tu.assert_status(response, goal, expected_statuses) 
 
+
+    # Test Delete Product
+    def test_delete_product(self, user):
+
+        # Get User's Product Id
+        product_id = tu.testing_users["admin"]["product_ids"][0]
+
+        # Set Goal
+        goal = f"Delete Product with id {product_id} for {user['email']}"
+
+        # Get Response to Request
+        response = requests.delete(
+            f"{tu.URL}/api/produits/{product_id}",
+            headers={"authorization": user["token"]}
+        )
+
+        # Get expected statuses based on user's role
+        expected_statuses = tu.get_expected_status_per_role(user["role"])
+
+        # Check & Log Response
+        status_OK = tu.assert_status(response, goal, expected_statuses) 
+        
+        # Update testing user's list of products
+        if (user["role"] == "admin") and status_OK:
+            del tu.testing_users["admin"]["product_ids"][0]

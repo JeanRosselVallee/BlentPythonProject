@@ -175,26 +175,79 @@ def create_app():
         return au.get_items(Produit, Produit.id, new_product.id)
 
 
+    # Route Update Product
+    @app.route("/api/produits/<int:product_id>", methods=["PUT"])
+    @requires_authorization
+    def update_product(product_id, data_in_token):
+
+        # Get User Data from DB
+        user_email = get_user_attribute_in_db(data_in_token, "email")
+        user_role = get_user_attribute_in_db(data_in_token, "role")
+
+        # Check User is Admin
+        if user_role != "admin":
+            return jsonify({"error": f"User {user_email} not authorized to update products."}), 403
+        
+        # Get Product Data from Request
+        submitted_data = request.get_json()
+        
+        # Check Product exists in DB
+        product = Produit.query.get(product_id)
+        if not product:
+            return jsonify({"error": f"Product with id {product_id} not found."}), 404
+        
+        # Get Submitted Fields        
+        app.logger.debug(f"update_product:\n {submitted_data.keys()}")
+        all_fields = {"nom", "description", "categorie", "prix", "quantite_stock"}
+        for field in all_fields:
+            field_is_available = au.check_fields(submitted_data, {field})
+            
+            # Update Submitted Field in DB
+            if field_is_available:
+                setattr(product, field, submitted_data[field])
+
+        db.session.commit()
+
+        # Return Updated Product
+        return get_product_by_id(product_id)
+
+
+    # Route Delete Product
+    @app.route("/api/produits/<int:product_id>", methods=["DELETE"])
+    @requires_authorization
+    def delete_product(product_id, data_in_token):
+
+        # Get User Data from DB
+        user_email = get_user_attribute_in_db(data_in_token, "email")
+        user_role = get_user_attribute_in_db(data_in_token, "role")
+
+        # Reject non-Admin Users
+        if user_role != "admin":  
+            return jsonify({"error": f"User {user_email} not authorized to delete products."}), 403
+   
+        # Check Product in DB before deletion
+        product = Produit.query.get(product_id)
+        if not product:
+            return jsonify({"error": f"Product with id {product_id} not found."}), 404
+        
+        # Delete Product in DB
+        db.session.delete(product)
+    
+        db.session.commit()
+
+        # Check Product in DB after deletion
+        product = Produit.query.get(product_id)
+        if not product:
+            return jsonify({"info": f"Product with id {product_id} has been deleted."}), 200
+        else:
+            return jsonify({"error": f"Product with id {product_id} could not be deleted."}), 404
+
+
     # Route Get Product by ID
     @app.route("/api/produits/<int:product_id>", methods=["GET"])
     @requires_authorization
     def get_product_by_id(product_id, data_in_token):
         return au.get_items(Produit, Produit.id, product_id)
-
-
-
-
-
-
-# TO DOs
-# Modifier un produit existant (PUT /api/produits/{id}) - Admin uniquement
-# Supprimer un produit (DELETE /api/produits/{id}) - Admin uniquement
-
-
-    # TO DO
-    # Search product by name or keywords in description
-    # Add a filter + search button inside webpage ??
-
 
 
     # Route Get All Products
@@ -215,6 +268,9 @@ def create_app():
         # Get Query Parameters
         # keywords = request.args.get('q')
         keywords = request.args.getlist('keywords')
+
+        # TO DO
+        # Add a filter + search button inside webpage ??
 
         if keywords:
             # Search products by keywords in name & description
@@ -268,8 +324,6 @@ def create_app():
         # Client gets only own orders
         return au.get_items(Commande, Commande.utilisateur_id, user_id)
 
-# TO DO 
-# Update stock quantity
 
     # Route Add Order Item
     @app.route("/api/commandes/<int:order_id>/lignes", methods=["POST"])
@@ -295,21 +349,23 @@ def create_app():
             return jsonify({"error": "Order not found."}), 404
 
         # Check Product exists
-        produit = Produit.query.filter_by(
-            id=submitted_data["produit_id"]
-            ).first()
-        if not produit:
+        id = submitted_data["produit_id"]
+        product = Produit.query.get(id)
+        if not product:
             return jsonify({"error": "Product not found."}), 404
 
-        # Check Product is available
-        # To DO
+        # Check Product Stock
+        quantity = submitted_data["quantite"]
+        stock = product.quantite_stock
+        if quantity > stock:
+            return jsonify({"error": f"{quantity} > stock of {stock} for product id {id}."}), 400
 
         # Create Order's Item in DB
         new_item = LigneCommande(
             commande_id=order_id,
             produit_id=submitted_data["produit_id"],
             quantite=submitted_data["quantite"],
-            prix_unitaire=produit.prix,
+            prix_unitaire=product.prix,
         )
         db.session.add(new_item)
         db.session.commit()
@@ -353,7 +409,7 @@ def create_app():
     # Route Update Order
     @app.route("/api/commandes/<int:order_id>", methods=["PATCH"])
     @requires_authorization
-    def update_order(order_id, data_in_token):
+    def update_order_status(order_id, data_in_token):
 
         # Get User Data from DB
         user_email = get_user_attribute_in_db(data_in_token, "email")
@@ -361,7 +417,7 @@ def create_app():
 
         # Check User is Admin
         if user_role != "admin":
-            return jsonify({"error": "User {email} not authorized to update orders."}), 403
+            return jsonify({"error": f"User {user_email} not authorized to update orders."}), 403
         
         # Get Order Data from Request
         submitted_data = request.get_json()
@@ -373,10 +429,42 @@ def create_app():
         order = Commande.query.get(order_id)
         if not order:
             return jsonify({"error": "Order not found."}), 404
-        
+
         # Update Order in DB
         order.statut = submitted_data["status"]
+
+        # Check Order was updated in DB
+        order = Commande.query.get(order_id)
+        if order.statut != submitted_data["status"]: 
+            return jsonify({"error": f"Order with id {order_id} could not be updated in DB."}), 404
+
+        # Case of Order's Validdation
+        validation_requested = (order.statut == "en_attente") and (submitted_data["status"] == "validée")
+        if validation_requested:
+        
+            # Update Stocks of products in the order
+
+            # Scan Order Items
+            order_items = LigneCommande.query.filter_by(commande_id=order_id).all()
+            for item in order_items:
+
+                # Get Product Id & Quantity 
+                id = item.produit_id 
+                quantity = item.quantite
+
+                # Get Product in DB                
+                product = Produit.query.get(id)
+
+                # Check Product Stock
+                if not product or (product.quantite >= quantity):
+                    return jsonify({"error": f"No stock for product with id {id}."}), 400
+                
+                # Update Product Stock 
+                product.quantite -= quantity
+
+        # Update whole transaction in DB            
         db.session.commit()
+
 
         # Return Updated Order
         return get_order_by_id(order_id)
@@ -413,14 +501,6 @@ def create_app():
         # Return Order
         order_as_string = au.get_items(Commande, Commande.id, order_id)
         return order_as_string
-
-
-    
-    def get_user_role_in_db(data_in_token):
-        # Get User Role in DB
-        email_in_token = data_in_token["login"]
-        user_in_db = Utilisateur.query.filter_by(email=email_in_token).first()
-        return user_in_db.role
 
 
     def get_user_attribute_in_db(data_in_token, attribute_name):
