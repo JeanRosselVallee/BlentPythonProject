@@ -1,4 +1,8 @@
-# Run this 1-shot script on terminal: python -m app.database.populate
+'''
+ Syntax
+Run this 1-shot script on terminal: 
+python -m app.database.populate
+'''
 
 from app import app, db   # imports Flask app & SQLAlchemy db from init.py
 from app.database.model import Utilisateur, Produit, Commande, LigneCommande

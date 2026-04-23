@@ -3,6 +3,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from flask import jsonify, current_app
 from sqlalchemy import text
+from app.database.model import Utilisateur
 
 SECRET_PHRASE = "d3fb12750c2eff92120742e1b334479e"
 
@@ -115,3 +116,12 @@ def check_fields(body, fields):
     available_fields = set(body.keys())
     required_fields_availability = required_fields <= available_fields
     return required_fields_availability
+
+
+
+def get_user_attribute_in_db(data_in_token, attribute_name):
+    # Get User Role in DB
+    email_in_token = data_in_token["login"]
+    user_in_db = Utilisateur.query.filter_by(email=email_in_token).first()
+    user_attribute = getattr(user_in_db, attribute_name, None)
+    return user_attribute
