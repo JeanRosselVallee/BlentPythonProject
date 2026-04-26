@@ -1,0 +1,334 @@
+{% extends "layout.html" %}
+
+{% block title %}Catalogue des Produits{% endblock %}
+
+{% block content %}
+<div id="admin-controls" class="mb-4 d-none">
+    <div class="d-flex justify-content-end align-items-center">
+        
+        <div class="input-group me-3" style="max-width: 250px;">
+            <input type="number" 
+                   id="searchIdInput" 
+                   class="form-control" 
+                   placeholder="ID Produit..." 
+                   aria-label="Search by ID">
+            <button class="btn btn-info text-white" 
+                    type="button" 
+                    onclick="searchProductById()" 
+                    title="Rechercher par ID">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+
+        <button class="btn btn-success" onclick="openProductModal()">
+            <i class="bi bi-plus-circle"></i> Ajouter un Produit
+        </button>
+        
+    </div>
+</div>
+
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Produit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="edit-product-id">
+                    <div class="mb-3">
+                        <label class="form-label">Nom</label>
+                        <input type="text" id="p-nom" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="p-desc" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catégorie</label>
+                        <input type="text" id="p-categ" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Prix (€)</label>
+                        <input type="number" id="p-prix" step="0.01" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stock</label>
+                        <input type="number" id="p-stock" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveProduct()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <h1 class="my-4" id="catalog-title">Catalogue Produits</h1>
+    
+    <div id="product-grid" class="product-grid">
+        <div class="text-center">
+            <p>Chargement des produits en cours...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let productModal;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalElement = document.getElementById('productModal');
+        if (modalElement) productModal = new bootstrap.Modal(modalElement);
+        setupRoleUI();
+        loadCatalog();
+    });
+
+    function setupRoleUI() {
+        const userRole = (localStorage.getItem('user_role') || "client").toLowerCase().trim();
+        const isAdmin = userRole === 'admin';
+        
+        // 1. Show/Hide Admin Controls (Search ID & Add Product)
+        const adminDiv = document.getElementById('admin-controls');
+        if (isAdmin && adminDiv) adminDiv.classList.remove('d-none');
+        
+        // 2. Change Page Title
+        const titleElement = document.getElementById('catalog-title');
+        if (titleElement) titleElement.innerText = isAdmin ? "Gestion Produits & Stocks" : "Catalogue Produits";
+
+        // 3. Hide the "Panier" button in the Navbar for Admin
+        // This targets the button usually found in layout.html
+        const cartButton = document.querySelector('a[href*="cart"]'); 
+        const cartBadge = document.getElementById('cart-count-badge'); // Your navbar badge
+        
+        if (isAdmin) {
+            if (cartButton) cartButton.style.display = 'none';
+            if (cartBadge) cartBadge.style.display = 'none';
+        }
+    }
+
+    async function loadCatalog() {
+        const grid = document.getElementById('product-grid');
+        
+        // 1. Get the current URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        try {
+            let apiUrl = '/api/produits';
+
+            // 2. If there are parameters (like keywords), append them to the API call
+            if (urlParams.toString()) {
+                apiUrl += `?${urlParams.toString()}`;
+            }
+
+            const response = await fetch(apiUrl);
+            const products = await response.json();
+
+            // 3. Clear and handle empty results
+            if (!products || products.length === 0) {
+                grid.innerHTML = '<div class="alert alert-info">Aucun produit trouvé pour votre recherche.</div>';
+                return;
+            }
+
+            const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
+
+            // 4. Render products
+            grid.innerHTML = products.map(p => `
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h3 class="card-title h5">${p.nom}</h3>
+                            ${isAdmin ? `<span class="badge bg-secondary">ID: ${p.id}</span>` : ''}
+                        </div>
+                        <p class="card-text text-muted small mb-1">${p.description}</p>
+                        <p class="card-text"><small class="text-info">${p.categorie}</small></p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="price h5 mb-0 fw-bold text-primary">${parseFloat(p.prix).toFixed(2)} €</span>
+                            <span class="badge ${p.quantite_stock > 0 ? 'bg-success' : 'bg-danger'}">
+                                Stock: ${p.quantite_stock}
+                            </span>
+                        </div>
+                        
+                        ${isAdmin ? `
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-warning btn-sm flex-grow-1" 
+                                        onclick='openProductModal(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+                                    Modifier
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="d-flex align-items-end gap-2 mt-auto">
+                                <button class="btn btn-primary flex-grow-1" onclick="handleAddToCartClick(${p.id})">
+                                    <i class="bi bi-cart-plus"></i> Ajouter
+                                </button>
+                                <div style="width: 100px;">
+                                    <label class="small text-muted mb-0" style="font-size: 0.75rem;">Quantité</label>
+                                    <input type="number" id="qty-${p.id}" class="form-control form-control-sm" value="1" min="1" max="${p.quantite_stock}">
+                                </div>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error("Load Catalog Error:", error);
+            grid.innerHTML = `<div class="alert alert-danger">Erreur de chargement du catalogue.</div>`;
+        }
+    }
+
+    function handleAddToCartClick(productId) {
+        const qtyInput = document.getElementById(`qty-${productId}`);
+        const quantity = parseInt(qtyInput.value) || 1;
+        addToCart(productId, quantity);
+    }
+
+    async function searchProductById() {
+        const id = document.getElementById('searchIdInput').value.trim();
+        const grid = document.getElementById('product-grid');
+        const titleElement = document.getElementById('catalog-title');
+        const token = localStorage.getItem('token');
+
+        if (!id) return;
+
+        try {
+            const response = await fetch(`/api/produits/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.status === 404) {
+                grid.innerHTML = `<div class="alert alert-warning">Produit #${id} non trouvé.</div>`;
+                return;
+            }
+
+            const result = await response.json();
+            const p = Array.isArray(result) ? result[0] : result;
+            const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
+
+            titleElement.innerText = `Produit #${id}`;
+
+            grid.innerHTML = `
+                <div class="card h-100 shadow" style="max-width: 450px; margin: 0 auto;">
+                    <div class="card-body">
+                        <h3 class="card-title">${p.nom} (ID: ${p.id})</h3>
+                        <p class="card-text">${p.description}</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="price h4 mb-0 text-primary">${parseFloat(p.prix).toFixed(2)} €</span>
+                            <span class="badge ${p.quantite_stock > 0 ? 'bg-success' : 'bg-danger'}">Stock: ${p.quantite_stock}</span>
+                        </div>
+                        ${isAdmin ? `
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-warning flex-grow-1" 
+                                        onclick='openProductModal(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+                                    Modifier
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteProduct(${p.id})">Supprimer</button>
+                            </div>
+                        ` : `
+                            <div class="d-flex align-items-end gap-2">
+                                <button class="btn btn-primary flex-grow-1" onclick="handleAddToCartClick(${p.id})">
+                                    Ajouter au panier
+                                </button>
+                                <div style="width: 100px;">
+                                    <label class="small text-muted mb-0">Quantité</label>
+                                    <input type="number" id="qty-${p.id}" class="form-control" value="1" min="1">
+                                </div>
+                            </div>
+                        `}
+                        <div class="mt-4 text-center">
+                            <a href="/catalog" class="btn btn-outline-secondary btn-sm">Retour au catalogue</a>
+                        </div>
+                    </div>
+                </div>`;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function addToCart(productId, quantity) {
+        const token = localStorage.getItem('token');
+        let orderId = localStorage.getItem('active_cart_id');
+
+        if (!orderId || orderId === "null") {
+            const res = await fetch('/api/commandes', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            orderId = data[0].id;
+            localStorage.setItem('active_cart_id', orderId);
+        }
+
+        try {
+            const resItem = await fetch(`/api/commandes/${orderId}/lignes`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "produit_id": productId, "quantite": quantity })
+            });
+
+            if (resItem.ok) {
+                if (typeof updateCartUI === "function") updateCartUI();
+                alert(`${quantity} article(s) ajouté(s) au panier !`);
+            } else {
+                const err = await resItem.json();
+                alert("Erreur: " + (err.error || "Impossible d'ajouter au panier"));
+            }
+        } catch (err) {
+            console.error("Cart error:", err);
+        }
+    }
+
+    function openProductModal(product = null) {
+        document.getElementById('productForm').reset();
+        if (product) {
+            document.getElementById('modalTitle').innerText = "Modifier le Produit";
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('p-nom').value = product.nom;
+            document.getElementById('p-desc').value = product.description;
+            document.getElementById('p-categ').value = product.categorie;
+            document.getElementById('p-prix').value = product.prix;
+            document.getElementById('p-stock').value = product.quantite_stock;
+        } else {
+            document.getElementById('modalTitle').innerText = "Nouveau Produit";
+            document.getElementById('edit-product-id').value = "";
+        }
+        productModal.show();
+    }
+
+    async function saveProduct() {
+        const id = document.getElementById('edit-product-id').value;
+        const token = localStorage.getItem('token');
+        const data = {
+            nom: document.getElementById('p-nom').value,
+            description: document.getElementById('p-desc').value,
+            categorie: document.getElementById('p-categ').value,
+            prix: parseFloat(document.getElementById('p-prix').value),
+            quantite_stock: parseInt(document.getElementById('p-stock').value)
+        };
+
+        const res = await fetch(id ? `/api/produits/${id}` : '/api/produits', {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) { productModal.hide(); loadCatalog(); }
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm("Supprimer ce produit ?")) return;
+        const res = await fetch(`/api/produits/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) loadCatalog();
+    }
+</script>
+{% endblock %}

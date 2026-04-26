@@ -33,7 +33,7 @@ class Commande(db.Model):
         db.Integer, db.ForeignKey("utilisateur.id"), nullable=False
     )
     date_commande = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    adresse_livraison = db.Column(db.String(500), nullable=False)
+    adresse_livraison = db.Column(db.String(500), nullable=True)  # Null until Check-out
     statut = db.Column(db.String(50), nullable=False, default="en_attente")
 
     # Relationship to link items to an order

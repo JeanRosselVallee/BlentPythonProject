@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+
+{% block title %}Inscription{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mt-5">
+            <div class="card-body">
+                <h2 class="text-center mb-4">Créer un compte</h2>
+                
+                <div id="error-message" class="alert alert-danger d-none"></div>
+                <div id="success-message" class="alert alert-success d-none">
+                    Compte créé avec succès ! Redirection vers la connexion...
+                </div>
+
+                <form id="register-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Adresse Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirm-password" class="form-label">Confirmer le mot de passe</label>
+                        <input type="password" class="form-control" id="confirm-password" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">S'inscrire</button>
+                </form>
+
+                <div class="mt-3 text-center">
+                    <p>Déjà un compte ? <a href="{{ url_for('web.login') }}">Se connecter</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        const errorDiv = document.getElementById('error-message');
+        const successDiv = document.getElementById('success-message');
+
+        // Basic Client-Side Validation
+        if (password !== confirmPassword) {
+            errorDiv.textContent = "Les mots de passe ne correspondent pas.";
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    "nom": name, 
+                    "email": email, 
+                    "mot_de_passe": password
+                 })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                errorDiv.classList.add('d-none');
+                successDiv.classList.remove('d-none');
+                // Redirect to login after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('web.login') }}";
+                }, 2000);
+            } else {
+                errorDiv.textContent = data.message || "Erreur lors de l'inscription";
+                errorDiv.classList.remove('d-none');
+            }
+        } catch (error) {
+            errorDiv.textContent = "Erreur de connexion au serveur";
+            errorDiv.classList.remove('d-none');
+        }
+    });
+</script>
+{% endblock %}

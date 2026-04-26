@@ -1,3 +1,5 @@
+import token
+
 import jwt
 
 from datetime import datetime, timedelta, timezone
@@ -14,12 +16,13 @@ def generate_json_token(user_login):
     expire_time = now + timedelta(hours=1)
     token = jwt.encode(
         {   "expire_time": expire_time.timestamp(), 
-            "login": user_login, 
+            "login": user_login
         },
         SECRET_PHRASE,
         algorithm="HS256",  # singular
     )
-    return jsonify({"token": token})
+    #return jsonify({"token": token})
+    return token
 
 
 # Token Validity Check for Authorization
@@ -28,10 +31,11 @@ def verify_token(token):
     returns payload = data stored in token 
     """
     try:
+        # current_app.logger.debug(f"DEBUG: Token received for verification: '{token}'")
         payload = jwt.decode(token, SECRET_PHRASE, algorithms=["HS256"])  # plural
         return payload
     except Exception as e:
-        print(f"ERROR in verify_token(): {e}")
+        current_app.logger.error(f"ERROR in verify_token(): {e}")
         return None
 
 # Get Email from Token
@@ -77,18 +81,19 @@ def search_items(db, table, field_1, field_2, keywords):
         '''
         
         f_name = "search_items()"
-        conditions = []
+        sql_conditions = []
         params = {}
 
         # Get 1 condition per keyword
         for i, word in enumerate(keywords):
-            concatenated_fields = f"{field_1} || ' ' || {field_2}"
-            condition = f"\n\t{concatenated_fields} LIKE :word_{i}"
-            conditions.append(condition)
-            params[f"word_{i}"] = f"%{word}%"
+            sql_concatenation = f"{field_1} || ' ' || {field_2}"
+            sql_text = f"LOWER({sql_concatenation})"
+            sql_condition = f"\n\t{sql_text} LIKE :word_{i}"
+            sql_conditions.append(sql_condition)
+            params[f"word_{i}"] = f"%{word.lower()}%"
 
         # Get SQL Clause with all conditions
-        sql_clause = ' AND '.join(conditions)
+        sql_clause = ' AND '.join(sql_conditions)
 
         # Set SQL Query as a string
         select_query = f"SELECT * FROM {table} WHERE {sql_clause}"

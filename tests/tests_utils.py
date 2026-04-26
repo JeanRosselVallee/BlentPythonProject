@@ -38,12 +38,12 @@ testing_users = {
 tested_clients = [
     {
         "email": "tested_client_1@test.net",
-        "password": "blent",
+        "password": "tested1",
         "name": "Tested Client 1",
     },
     {
         "email": "tested_client_2@test.net",
-        "password": "blent",
+        "password": "tested2",
         "name": "Tested Client 2",
     },
 ]
@@ -181,27 +181,6 @@ def delete_test_data():
                 db.session.delete(user_instance)
                 logging.info(f"Deleted user {email}.")
                 db.session.commit()  
-
-def assert_status_to_delete(response, test_goal, expected_statuses):
-    """
-    Validates the HTTP response and prints formatted output.
-    """
-
-    # Log Goal & URL
-    logging.info(f"API '{test_goal}'")
-    logging.info(f"URL {response.url}")
-    
-    # Get Status from Response Tuple
-    status = response.status_code
-    status_OK = (status in expected_statuses)
-
-    # Check Status
-    if status_OK:        
-        logging.info("Response OK")
-    else:
-        logging.exception(f"{response.json().get('error')}")
-
-    return status_OK
 
 
 def assert_status(response, test_goal, expected_statuses):

@@ -1,0 +1,286 @@
+{% extends "layout.html" %}
+
+{% block title %}Historique des Commandes{% endblock %}
+
+{% block content %}
+<style>
+    .status-timeline {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        margin-bottom: 30px;
+        padding: 0 10px;
+    }
+    .status-timeline::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #dee2e6;
+        z-index: 1;
+    }
+    .status-step {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        flex: 1;
+    }
+    .step-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 8px;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    .step-label {
+        font-size: 11px;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+    .status-step.active .step-icon {
+        border-color: #0d6efd;
+        background: #0d6efd;
+        color: white;
+    }
+    .status-step.active .step-label { color: #0d6efd; }
+    
+    .status-step.completed .step-icon {
+        border-color: #198754;
+        background: #198754;
+        color: white;
+    }
+    .status-step.completed .step-label { color: #198754; }
+
+    .status-step.cancelled .step-icon {
+        border-color: #dc3545;
+        background: #dc3545;
+        color: white;
+    }
+    .status-step.cancelled .step-label { color: #dc3545; }
+</style>
+
+<div id="admin-controls" class="container mt-4 d-none">
+    <div class="d-flex justify-content-end align-items-center mb-3">
+        <div class="input-group me-3" style="max-width: 250px;">
+            <input type="number" id="searchOrderIdInput" class="form-control" placeholder="ID Commande...">
+            <button class="btn btn-info text-white" type="button" onclick="searchOrderById()">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+        <button class="btn btn-success" onclick="openOrderModal()">
+            <i class="bi bi-plus-circle"></i> Nouvelle Commande
+        </button>
+    </div>
+</div>
+
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Créer une Commande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="orderForm">
+                    <div class="mb-3">
+                        <label class="form-label">ID Utilisateur (Client)</label>
+                        <input type="number" id="o-userid" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Adresse de Livraison</label>
+                        <textarea id="o-adresse" class="form-control" rows="2" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="createNewOrder()">Créer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <h1 class="my-4" id="page-title">Historique des Commandes</h1>
+    <div id="orders-list">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Chargement...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let orderModal;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalElement = document.getElementById('orderModal');
+        if (modalElement) orderModal = new bootstrap.Modal(modalElement);
+        
+        setupRoleUI();
+        loadOrders();
+    });
+
+    function setupRoleUI() {
+        const userRole = (localStorage.getItem('user_role') || "client").toLowerCase().trim();
+        const isAdmin = userRole === 'admin';
+        
+        if (isAdmin) {
+            document.getElementById('admin-controls').classList.remove('d-none');
+            document.getElementById('page-title').innerText = "Gestion des Commandes";
+        }
+    }
+
+    async function loadOrders() {
+        const container = document.getElementById('orders-list');
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch('/api/commandes', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const orders = await response.json();
+            renderOrders(orders);
+        } catch (error) {
+            container.innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
+        }
+    }
+
+    function generateTimeline(currentStatus) {
+        const stages = [
+            { id: 'en_attente', label: 'Attente', icon: 'bi-clock' },
+            { id: 'validée', label: 'Validée', icon: 'bi-check2-circle' },
+            { id: 'expédiée', label: 'Expédiée', icon: 'bi-truck' },
+            { id: 'annulée', label: 'Annulée', icon: 'bi-x-circle' }
+        ];
+        const currentIndex = stages.findIndex(s => s.id === currentStatus);
+        
+        return `
+            <div class="status-timeline">
+                ${stages.map((stage, index) => {
+                    let stateClass = '';
+                    if (stage.id === 'annulée' && currentStatus === 'annulée') stateClass = 'cancelled';
+                    else if (index < currentIndex && currentStatus !== 'annulée') stateClass = 'completed';
+                    else if (index === currentIndex) stateClass = 'active';
+                    return `
+                        <div class="status-step ${stateClass}">
+                            <div class="step-icon"><i class="bi ${stage.icon}"></i></div>
+                            <div class="step-label">${stage.label}</div>
+                        </div>`;
+                }).join('')}
+            </div>`;
+    }
+
+    function renderOrders(orders) {
+        const container = document.getElementById('orders-list');
+        const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
+        const statusOptions = ['en_attente', 'validée', 'expédiée', 'annulée'];
+
+        if (!orders || orders.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">Aucune commande.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        orders.forEach(order => {
+            const dateStr = new Date(order.date_commande).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' });
+            
+            const orderHtml = `
+                <div class="card mb-4 shadow-sm border-0 rounded-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5 class="text-primary fw-bold">Commande #${order.id}</h5>
+                            <span class="text-muted small">${dateStr}</span>
+                        </div>
+                        ${generateTimeline(order.statut)}
+                        <p class="small mb-2">📍 <strong>Adresse:</strong> ${order.adresse_livraison || 'N/A'}</p>
+                        <div id="items-container-${order.id}" class="bg-light p-2 rounded mb-3">
+                            <div class="spinner-border spinner-border-sm text-secondary"></div>
+                        </div>
+                        ${isAdmin ? `
+                            <div class="border-top pt-2">
+                                <label class="small fw-bold">Modifier Statut:</label>
+                                <select class="form-select form-select-sm" onchange="updateStatus(${order.id}, this.value)">
+                                    ${statusOptions.map(opt => `<option value="${opt}" ${order.statut === opt ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
+                                </select>
+                                <small class="text-muted">Client ID: ${order.utilisateur_id}</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', orderHtml);
+            fetchOrderItems(order.id);
+        });
+    }
+
+    async function fetchOrderItems(orderId) {
+        const token = localStorage.getItem('token');
+        const container = document.getElementById(`items-container-${orderId}`);
+        try {
+            const res = await fetch(`/api/commandes/${orderId}/lignes`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const items = await res.json();
+            if (!items.length) { container.innerHTML = '<span class="small text-muted">Vide</span>'; return; }
+            container.innerHTML = items.map(i => `<div class="small d-flex justify-content-between"><span>${i.nom} x${i.quantite}</span><span>${parseFloat(i.prix_unitaire).toFixed(2)}€</span></div>`).join('');
+        } catch (e) { container.innerHTML = '...'; }
+    }
+
+    function openOrderModal() {
+        document.getElementById('orderForm').reset();
+        orderModal.show();
+    }
+
+    async function createNewOrder() {
+        const token = localStorage.getItem('token');
+        const data = {
+            user_id: parseInt(document.getElementById('o-userid').value),
+            adresse_livraison: document.getElementById('o-adresse').value
+        };
+
+        const response = await fetch('/api/commandes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            orderModal.hide();
+            loadOrders();
+        } else {
+            alert("Erreur lors de la création.");
+        }
+    }
+
+    async function updateStatus(id, status) {
+        const token = localStorage.getItem('token');
+        await fetch(`/api/commandes/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ "status": status })
+        });
+        loadOrders();
+    }
+
+    async function searchOrderById() {
+        const id = document.getElementById('searchOrderIdInput').value.trim();
+        const token = localStorage.getItem('token');
+        if (!id) return;
+        const res = await fetch(`/api/commandes/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+            const data = await res.json();
+            renderOrders(Array.isArray(data) ? data : [data]);
+        } else {
+            alert("Non trouvée");
+        }
+    }
+</script>
+{% endblock %}

@@ -37,7 +37,7 @@ def create_app():
     app.register_blueprint(orders_bp, url_prefix='/api')
 
     # - Routes for Frontend Web Pages
-    app.register_blueprint(web_bp, url_prefix='/web')
+    app.register_blueprint(web_bp) # No prefix
 
 
     # DB R/W Access

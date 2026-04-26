@@ -10,7 +10,9 @@ def requires_authorization(target_function):
     def wrapper(*args, **kwargs):
 
         # Get Token
-        token = request.headers.get("authorization", "0")  # 0 by default
+        auth_header = request.headers.get("authorization", "0")  # Gets Bearer <token>, default 0
+        # print("auth_header=", auth_header)
+        token = auth_header.split(" ")[1] # Extracts token from header 
         data_in_token = au.verify_token(token)        
         if not data_in_token:
             return jsonify({"error": "Authorization denied: invalid token"}), 401

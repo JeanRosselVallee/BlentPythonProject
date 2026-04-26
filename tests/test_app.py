@@ -90,6 +90,7 @@ class Test_app:
         email = user['email']
         goal_1 = f"Authenticate user {email}"
         goal_2 = f"Get Token for user {email}"
+        goal_3 = f"Get role for user {email}"
 
         # Get Response
         response = requests.post(
@@ -107,8 +108,9 @@ class Test_app:
         if data_is_a_dict:
             user["token"] = data_in_response["token"]
 
-        # Pytest Assertion
+        # Pytest Assertions
         assert user["token"], f"{goal_2} failed."
+        assert user["role"], f"{goal_3} failed."
 
 
     # Test Create an Product
@@ -120,7 +122,8 @@ class Test_app:
         # Get Response
         response = requests.post(
             f"{tu.URL}/api/produits",
-            headers={"authorization": user["token"]},
+            # headers={"authorization": user["token"]},
+            headers={"authorization": "Bearer " + user["token"]},
             json=tu.tested_product
         )
 
@@ -152,7 +155,7 @@ class Test_app:
         # Get Response to Request
         response = requests.put(
             f"{tu.URL}/api/produits/{product_id}",
-            headers={"authorization": user["token"]},
+            headers={"authorization": "Bearer " + user["token"]},
             json={
                 "nom": "Mouse Microsoft XYZ123",
                 "description": "Gray, USB-C, wireless, battery",
@@ -179,7 +182,7 @@ class Test_app:
         product_id = 2
         response = requests.get(
             f"{tu.URL}/api/produits/{product_id}",
-            headers={"authorization": user["token"]},
+            headers={"authorization": "Bearer " + user["token"]},
         )
 
         # Check & Log Response
@@ -224,14 +227,21 @@ class Test_app:
         goal = f"Create Order by {user['email']}"
 
         # Get Response
-        response = requests.post(
-            f"{tu.URL}/api/commandes",
-            headers={"authorization": user["token"]},
-            json={
-                "utilisateur_id": user["id"],
-                "adresse_livraison": "123, rue de la Paix, Paris"
-            }
-        )
+        if user["role"] == "client":
+            response = requests.post(
+                f"{tu.URL}/api/commandes",
+                headers={"authorization": "Bearer " + user["token"]
+                }
+            )
+        else:  # Case Admin User
+            response = requests.post(
+                f"{tu.URL}/api/commandes",
+                headers={"authorization": "Bearer " + user["token"]},
+                json={
+                    "user_id": user["id"], # Admin order used by next tests
+                    "adresse_livraison": "10, rue de la Paix, Paris"
+                }
+            )
         
         # Check & Log Response       
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
@@ -262,7 +272,7 @@ class Test_app:
             # Get Response to Request
             response = requests.get(
                 f"{tu.URL}/api/commandes/{order_id}",
-                headers={"authorization": user["token"]}
+                headers={"authorization": "Bearer " + user["token"]}
             )
             
             # Check & Log Response
@@ -278,7 +288,7 @@ class Test_app:
         # Get Response
         response = requests.get(
             f"{tu.URL}/api/commandes",
-            headers={"authorization": user["token"]}
+            headers={"authorization": "Bearer " + user["token"]}
         )
 
         # Check & Log Response
@@ -310,7 +320,7 @@ class Test_app:
         # Get Response
         response = requests.post(
             f"{tu.URL}/api/commandes/{order_id}/lignes",
-            headers={"authorization": user["token"]},
+            headers={"authorization": "Bearer " + user["token"]},
             json={
                 "produit_id": product_id,
                 "quantite": quantity
@@ -343,7 +353,7 @@ class Test_app:
             # Get Response to Request
             response = requests.get(
                 f"{tu.URL}/api/commandes/{order_id}/lignes",
-                headers={"authorization": user["token"]},
+                headers={"authorization": "Bearer " + user["token"]},
             )
         
             # Check & Log Response
@@ -362,7 +372,7 @@ class Test_app:
         # Get Response to Request
         response = requests.patch(
             f"{tu.URL}/api/commandes/{order_id}",
-            headers={"authorization": user["token"]},
+            headers={"authorization": "Bearer " + user["token"]},
             json={
                 "status": "validée"
             }
@@ -373,6 +383,28 @@ class Test_app:
 
         # Check & Log Response
         tu.assert_status(response, goal, expected_statuses) 
+
+
+ # Test Update Order
+    def test_update_order_address(self, user):
+
+        # Get User's Order Id
+        order_id = user["order_ids"][0]
+
+        # Set Goal
+        goal = f"Update Order with id {order_id} for {user['email']}"
+
+        # Get Response to Request
+        response = requests.patch(
+            f"{tu.URL}/api/commandes/{order_id}",
+            headers={"authorization": "Bearer " + user["token"]},
+            json={
+                "adresse_livraison": "10, rue de la Paix, Paris"
+            }
+        )
+
+        # Check & Log Response
+        tu.assert_status(response, goal, tu.SUCCESS_CODES) 
 
 
     # Test Delete Product
@@ -387,7 +419,7 @@ class Test_app:
         # Get Response to Request
         response = requests.delete(
             f"{tu.URL}/api/produits/{product_id}",
-            headers={"authorization": user["token"]}
+            headers={"authorization": "Bearer " + user["token"]}
         )
 
         # Get expected statuses based on user's role

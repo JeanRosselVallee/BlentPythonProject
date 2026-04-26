@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+
+{% block title %}Mon Panier{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">🛒 Votre Panier</h2>
+    
+    <div id="cart-container">
+        <div class="text-center py-5" id="cart-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Chargement de votre panier...</p>
+        </div>
+    </div>
+
+    <div id="cart-summary" class="mt-4 p-4 bg-white shadow-sm rounded d-none">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4>Total: <span id="cart-total" class="text-primary">0.00</span> €</h4>
+            <button class="btn btn-success btn-lg" onclick="showCheckout()">Finaliser la commande</button>
+        </div>
+    </div>
+</div>
+
+<div id="checkout-section" class="mt-4 p-4 bg-light border rounded d-none">
+    <h3>Détails de livraison</h3>
+    <div class="mb-3">
+        <label for="address" class="form-label">Adresse complète</label>
+        <textarea class="form-control" id="delivery-address" rows="3" placeholder="123 Rue de l'Informatique..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="processCheckout()">Confirmer l'achat</button>
+    <button class="btn btn-link" onclick="hideCheckout()">Annuler</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', loadCart);
+
+    async function loadCart() {
+        const token = localStorage.getItem('token');
+        const orderId = localStorage.getItem('active_cart_id');
+        const container = document.getElementById('cart-container');
+        const summary = document.getElementById('cart-summary');
+
+        if (!orderId) {
+            container.innerHTML = '<div class="alert alert-info">Votre panier est vide.</div>';
+            return;
+        }
+
+        try {
+            // Fetch items in the cart
+            const response = await fetch(`/api/commandes/${orderId}/lignes`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const items = await response.json();
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">Votre panier est vide.</div>';
+                summary.classList.add('d-none');
+                return;
+            }
+
+            let html = `
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Produit Id</th>
+                            <th>Prix Unitaire</th>
+                            <th>Quantité</th>
+                            <th>Sous-total</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let total = 0;
+            items.forEach(item => {
+                const subtotal = item.prix_unitaire * item.quantite;
+                total += subtotal;
+                html += `
+                    <tr>
+                        <td><strong>${item.produit_id || 'N/A'}</strong></td>
+                        <td>${item.prix_unitaire.toFixed(2)} €</td>
+                        <td>${item.quantite}</td>
+                        <td class="fw-bold">${subtotal.toFixed(2)} €</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLine(${item.id})">Supprimer</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            document.getElementById('cart-total').innerText = total.toFixed(2);
+            summary.classList.remove('d-none');
+
+        } catch (error) {
+            container.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement.</div>';
+        }
+    }
+
+    async function deleteLine(lineId) {
+        const token = localStorage.getItem('token');
+        if (!confirm("Supprimer cet article ?")) return;
+
+        await fetch(`/api/lignes/${lineId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadCart(); // Reload the view
+        updateCartUI(); // Update the navbar count
+    }
+
+    function showCheckout() {
+        document.getElementById('checkout-section').classList.remove('d-none');
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function hideCheckout() {
+        document.getElementById('checkout-section').classList.add('d-none');
+    }
+
+    async function processCheckout() {
+        const token = localStorage.getItem('token');
+        const orderId = localStorage.getItem('active_cart_id');
+        const address = document.getElementById('delivery-address').value;
+
+        if (!address) return alert("Veuillez saisir une adresse.");
+
+        // PUT request to update order status and address
+        const response = await fetch(`/api/commandes/${orderId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                "adresse_livraison": address
+            })
+        });
+
+        if (response.ok) {
+            alert("Merci pour votre achat !");
+            localStorage.removeItem('active_cart_id'); // Clear current cart
+            window.location.href = "{{ url_for('web.catalog') }}";
+        }
+    }
+</script>
+{% endblock %}

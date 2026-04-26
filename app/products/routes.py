@@ -12,6 +12,8 @@ products_bp = Blueprint(
     )
 
 
+ # ROUTES DEFINITION
+
 # Route Create Product
 @products_bp.route("/produits", methods=["POST"])
 @requires_authorization
@@ -27,8 +29,8 @@ def create_product(data_in_token):
     # Get Product Data from Request
     submitted_data = request.get_json()
     missing_fields = (not au.check_fields(
-        submitted_data, 
-        {"nom", 
+        submitted_data, {
+            "nom", 
             "description",
             "categorie",
             "prix",
