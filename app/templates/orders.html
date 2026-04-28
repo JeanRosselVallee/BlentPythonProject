@@ -1,9 +1,16 @@
+{# Goal: #}
+{# - Display a chronological history of orders for clients #}
+{# - Provide a tracking timeline for each order's current status #}
+{# - Offer administrative tools to manage all platform orders (Search by ID, Status Update, Creation) #}
+{# - Dynamically fetch and display line items for each individual order #}
+
 {% extends "layout.html" %}
 
 {% block title %}Historique des Commandes{% endblock %}
 
 {% block content %}
 <style>
+    /* Styling for the visual order progression tracker */
     .status-timeline {
         display: flex;
         justify-content: space-between;
@@ -46,25 +53,12 @@
         text-transform: uppercase;
         font-weight: bold;
     }
-    .status-step.active .step-icon {
-        border-color: #0d6efd;
-        background: #0d6efd;
-        color: white;
-    }
+    /* Dynamic states based on order progress */
+    .status-step.active .step-icon { border-color: #0d6efd; background: #0d6efd; color: white; }
     .status-step.active .step-label { color: #0d6efd; }
-    
-    .status-step.completed .step-icon {
-        border-color: #198754;
-        background: #198754;
-        color: white;
-    }
+    .status-step.completed .step-icon { border-color: #198754; background: #198754; color: white; }
     .status-step.completed .step-label { color: #198754; }
-
-    .status-step.cancelled .step-icon {
-        border-color: #dc3545;
-        background: #dc3545;
-        color: white;
-    }
+    .status-step.cancelled .step-icon { border-color: #dc3545; background: #dc3545; color: white; }
     .status-step.cancelled .step-label { color: #dc3545; }
 </style>
 
@@ -124,6 +118,9 @@
 <script>
     let orderModal;
 
+    /**
+     * Entry Point: Initialize role-based view and fetch order data.
+     */
     document.addEventListener('DOMContentLoaded', () => {
         const modalElement = document.getElementById('orderModal');
         if (modalElement) orderModal = new bootstrap.Modal(modalElement);
@@ -132,6 +129,11 @@
         loadOrders();
     });
 
+    /**
+     * @function setupRoleUI
+     * @description Switches visibility of administrative tools and updates page titles 
+     * based on the 'admin' role in localStorage.
+     */
     function setupRoleUI() {
         const userRole = (localStorage.getItem('user_role') || "client").toLowerCase().trim();
         const isAdmin = userRole === 'admin';
@@ -142,6 +144,10 @@
         }
     }
 
+    /**
+     * @function loadOrders
+     * @description Retrieves the order collection from the API and calls the renderer.
+     */
     async function loadOrders() {
         const container = document.getElementById('orders-list');
         const token = localStorage.getItem('token');
@@ -150,12 +156,26 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const orders = await response.json();
-            renderOrders(orders);
+
+            // Check orders are available
+            if (orders && orders.length > 0) {
+                renderOrders(orders);
+            } else {
+                container.innerHTML = '<div class="alert alert-info">Pas de commandes.</div>';
+            }
+
         } catch (error) {
             container.innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
         }
     }
 
+    /**
+     * @function generateTimeline
+     * @description Generates the HTML for the progress tracker. It highlights completed 
+     * stages and the current active stage based on the order status.
+     * @param {string} currentStatus - The current status (e.g., 'en_attente', 'expédiée').
+     * @returns {string} HTML string representing the timeline.
+     */
     function generateTimeline(currentStatus) {
         const stages = [
             { id: 'en_attente', label: 'Attente', icon: 'bi-clock' },
@@ -169,9 +189,11 @@
             <div class="status-timeline">
                 ${stages.map((stage, index) => {
                     let stateClass = '';
+                    // Special handling for cancelled status
                     if (stage.id === 'annulée' && currentStatus === 'annulée') stateClass = 'cancelled';
                     else if (index < currentIndex && currentStatus !== 'annulée') stateClass = 'completed';
                     else if (index === currentIndex) stateClass = 'active';
+                    
                     return `
                         <div class="status-step ${stateClass}">
                             <div class="step-icon"><i class="bi ${stage.icon}"></i></div>
@@ -181,6 +203,12 @@
             </div>`;
     }
 
+    /**
+     * @function renderOrders
+     * @description Maps the array of order objects to visual cards. 
+     * Admins get an additional status-update dropdown and Client ID visibility.
+     * @param {Array} orders - List of order objects from the API.
+     */
     function renderOrders(orders) {
         const container = document.getElementById('orders-list');
         const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
@@ -223,6 +251,12 @@
         });
     }
 
+    /**
+     * @function fetchOrderItems
+     * @description Fetches the specific products linked to an order ID and 
+     * renders them into the order's specific summary box.
+     * @param {number} orderId - The unique ID of the order.
+     */
     async function fetchOrderItems(orderId) {
         const token = localStorage.getItem('token');
         const container = document.getElementById(`items-container-${orderId}`);
@@ -230,15 +264,27 @@
             const res = await fetch(`/api/commandes/${orderId}/lignes`, { headers: { 'Authorization': `Bearer ${token}` } });
             const items = await res.json();
             if (!items.length) { container.innerHTML = '<span class="small text-muted">Vide</span>'; return; }
-            container.innerHTML = items.map(i => `<div class="small d-flex justify-content-between"><span>${i.nom} x${i.quantite}</span><span>${parseFloat(i.prix_unitaire).toFixed(2)}€</span></div>`).join('');
+            container.innerHTML = items.map(i => `
+                <div class="small d-flex justify-content-between">
+                    <span>${i.nom} x${i.quantite}</span>
+                    <span>${parseFloat(i.prix_unitaire).toFixed(2)}€</span>
+                </div>`).join('');
         } catch (e) { container.innerHTML = '...'; }
     }
 
+    /**
+     * @function openOrderModal
+     * @description Resets and shows the modal for manual order creation.
+     */
     function openOrderModal() {
         document.getElementById('orderForm').reset();
         orderModal.show();
     }
 
+    /**
+     * @function createNewOrder
+     * @description POSTs a new order request to the API with a target User ID and address.
+     */
     async function createNewOrder() {
         const token = localStorage.getItem('token');
         const data = {
@@ -260,6 +306,13 @@
         }
     }
 
+    /**
+     * @function updateStatus
+     * @description PATCHes an order's status. Called whenever an admin changes 
+     * the selection in an order's status dropdown.
+     * @param {number} id - Order ID.
+     * @param {string} status - New status string.
+     */
     async function updateStatus(id, status) {
         const token = localStorage.getItem('token');
         await fetch(`/api/commandes/${id}`, {
@@ -270,6 +323,10 @@
         loadOrders();
     }
 
+    /**
+     * @function searchOrderById
+     * @description Admin tool to filter the order list to a specific record via ID.
+     */
     async function searchOrderById() {
         const id = document.getElementById('searchOrderIdInput').value.trim();
         const token = localStorage.getItem('token');
@@ -277,6 +334,7 @@
         const res = await fetch(`/api/commandes/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
             const data = await res.json();
+            // Wrap object in array if needed for the renderer
             renderOrders(Array.isArray(data) ? data : [data]);
         } else {
             alert("Non trouvée");

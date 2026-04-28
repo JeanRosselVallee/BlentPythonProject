@@ -1,58 +1,135 @@
-# BlentPythonProject
-DigiMarket sells PC hardware &amp; wants to diversify its activity with an online e-shop (E-commerce) via an API REST developped with Flask, SQLALchemy as ORM, an SQLite database.
+"""
+# DigiMarket E-commerce API
 
-# Project Overview: DigiMarket E-commerce API
-
-DigiMarket is diversifying into e-commerce by developing a REST API to manage products, categories, orders, and users.
+DigiMarket is a specialized PC hardware retailer diversifying into the online space. This project provides a robust REST API developed with **Flask**, using **SQLAlchemy** as an ORM and **SQLite** for data persistence.
 
 ---
 
-### Technical Constraints
+## 🚀 Project Overview
 
+The DigiMarket API manages a complete e-commerce workflow, from user registration and secure authentication to product catalog management and automated order processing with stock validation.
+
+### Technical Stack
 | Category | Technology |
 | :--- | :--- |
-| **Language** | Python |
-| **Backend Framework** | Flask (with Blueprints) |
-| **Database & ORM** | SQLite with SQLAlchemy |
-| **Authentication** | JWT (JSON Web Tokens) with password hashing |
-| **Architecture** | Modular (Models, Controllers, Views/JSON) |
+| **Language** | Python 3.x |
+| **Backend Framework** | Flask (Factory Pattern with Blueprints) |
+| **Database & ORM** | SQLite + SQLAlchemy |
+| **Authentication** | JWT (JSON Web Tokens) + Werkzeug Hashing |
+| **Testing** | Pytest + Requests |
+| **Environment** | python-dotenv for Secret Management |
 
 ---
 
-### API Endpoints Summary
+## 📂 Project Structure
 
-#### 1. Authentication & Users
-* **POST** `/api/auth/register`: Register a new user (Email, Password, Role).
-* **POST** `/api/auth/login`: Authenticate and receive a JWT.
-
-#### 2. Product Catalog
-* **GET** `/api/produits`: List all products (Public/Client).
-* **GET** `/api/produits/{id}`: View product details (Public/Client).
-* **POST** `/api/produits`: Add a new product (**Admin only**).
-* **PUT** `/api/produits/{id}`: Update product info (**Admin only**).
-* **DELETE** `/api/produits/{id}`: Remove a product (**Admin only**).
-
-#### 3. Order Management
-* **GET** `/api/commandes`: List orders (Admin sees all; Client sees their own).
-* **GET** `/api/commandes/{id}`: View specific order details.
-* **POST** `/api/commandes`: Create a new order (Includes stock validation).
-* **PATCH** `/api/commandes/{id}`: Update order status (**Admin only**).
-* **GET** `/api/commandes/{id}/lignes`: View order line items.
-
----
-
-### Key Functional Requirements
-
-* **Roles:** * **Clients:** Browse, search, order, and track history.
-    * **Admins:** Manage catalog, stock, and all customer orders.
-* **Stock Logic:** System must verify availability and auto-update quantities upon order validation.
-* **Security:** Role-based access control (RBAC) and protection against common vulnerabilities (SQL injection).
+```text
+BlentPythonProject/
+├── app/
+│   ├── auth/            # Auth logic, routes, and decorators
+│   ├── products/        # Product catalog routes
+│   ├── orders/          # Order and line-item logic
+│   ├── database/        # SQLAlchemy Models (model.py)
+│   ├── static/          # CSS/JS for the frontend
+│   ├── templates/       # HTML for the web interface
+│   ├── __init__.py      # App Factory and DB initialization
+│   ├── app_utils.py     # Shared utilities (JWT, DB helpers)
+│   └── extensions.py    # Flask extension instances (db)
+├── tests/
+│   ├── test_app.py      # Main API test suite
+│   ├── tests_utils.py   # Test helpers and seeding logic
+│   └── pytest.log       # Automated test logs
+├── .env                 # Environment variables (Secret keys)
+├── pytest.ini           # Pytest configuration
+├── requirements.txt     # Python dependencies
+├── run.py               # Application entry point
+└── instance/
+    └── digimarket.db    # SQLite Database file
+```
 
 ---
 
-### Expected Deliverables
+## 🛠️ Installation & Setup
 
-1. **Source Code:** Organized structure with `requirements.txt`.
-2. **Documentation:** `README.md` with installation, usage, and API specs.
-3. **Database:** Initialized SQLite file with test data.
-4. **Testing:** Unit and functional tests for core features.
+1. **Clone the repository and enter the directory:**
+   ```bash
+   cd BlentPythonProject
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   # Windows:
+   venv\\Scripts\\activate
+   # macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure Environment Variables:**
+   Create a `.env` file in the root directory:
+   ```text
+   SECRET_PHRASE=your_secure_random_string_here
+   ```
+
+5. **Run the Application:**
+   ```bash
+   python run.py
+   ```
+   The server will start at `http://127.0.0.1:5000`.
+
+---
+
+## 🔐 Security & Roles
+
+The API implements **Role-Based Access Control (RBAC)** via JWT decorators:
+
+- **Admin Role:** Full CRUD access to the product catalog, ability to delete items, and visibility of all customer orders.
+- **Client Role:** Access to browse products, create their own orders, and view their personal order history.
+- **Authentication:** Users must provide a `Bearer <token>` in the `Authorization` header for protected routes.
+
+---
+
+## 🧪 Testing Workflow
+
+The project includes an automated testing suite using **Pytest**. 
+
+### Running Tests
+To run the full suite from the terminal (ensure the Flask server is running first):
+```bash
+python -m pytest -sv --tb=short tests/test_app.py
+```
+
+### Testing Logic
+- **Seeding:** The suite automatically creates `admin@test.net` and `customer@test.net` for testing.
+- **Lifecycle:** A `testing_wrapper` fixture handles DB setup before tests and performs a full cleanup (teardown) after tests finish.
+- **Validation:** Every request is checked against expected HTTP status codes (e.g., 403 for unauthorized access).
+
+---
+
+## 📡 API Endpoints Summary
+
+### Authentication & Users
+- `POST /auth/register`: Register a new user (Email, Password, Role).
+- `POST /auth/login`: Authenticate and receive a JWT.
+
+### Product Catalog
+- `GET /api/produits`: List all products (supports `?keywords=` query params).
+- `GET /api/produits/<id>`: View product details.
+- `POST /api/produits`: Add a new product (**Admin only**).
+- `PUT /api/produits/<id>`: Update product info (**Admin only**).
+- `DELETE /api/produits/<id>`: Remove a product (**Admin only**).
+
+### Order Management
+- `GET /api/commandes`: List orders (Admin sees all; Client sees their own).
+- `GET /api/commandes/<id>`: View specific order details.
+- `POST /api/commandes`: Create a new order (Includes stock validation).
+- `PATCH /api/commandes/<id>`: Update order status or shipping address.
+- `GET /api/commandes/<id>/lignes`: View order line items.
+- `POST /api/commandes/<id>/lignes`: Add items to an existing order.
+"""
+```

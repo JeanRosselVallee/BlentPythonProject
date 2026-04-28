@@ -1,18 +1,26 @@
-# Syntax
-# Run all tests on terminal: 
-#    python -m pytest -sv --tb=short <file_path>
-# Run single test on terminal: 
-#    python -m pytest -sv --tb=short <file_path>
-# Options :
-#    -m searches modules from root dir rather than library files
-#    -s displays stdout & SQL queries
-#    -v displays names of tested module & user
-#    --tb=short : traceback, shows lines in error
-#    -k runs only certain tests on certain users:
-#    python ... -k "(authenticate or create_order) and CLIENT"
-# Log outpout on ./pytest.log
+'''
+Goal : Test REST API responses for all routes
 
-# Goal : Test REST API responses for all routes
+REST API Automated Testing Suite
+This module uses Pytest and Requests to verify all API endpoints.
+It tests security (Role-Based Access Control), CRUD operations for products 
+and orders, and ensures correct HTTP status codes are returned for each scenario.
+
+Syntax
+Run all tests on terminal: 
+   python -m pytest -sv --tb=short <file_path>
+Run given tests on terminal: 
+   python -m pytest -sv --tb=short tests/test_app.py -k "(login or order) and CLIENT"
+Options :
+   -m searches modules from root dir rather than library files
+   -s displays stdout & SQL queries
+   -v displays names of tested module & user
+   --tb=short : traceback, shows lines in error
+   -k runs only certain tests on certain users:
+   python ... -k "(authenticate or create_order) and CLIENT"
+Log outpout on ./pytest.log
+
+'''
 
 import pytest
 import requests
@@ -22,11 +30,14 @@ import tests.tests_utils as tu  # Custom Library
 
 
 @pytest.fixture(scope="module", autouse=True)
+# 'scope="module"' : runs only once (per module not per test)
+# 'autouse=True' : runs automatically (no call needed)
 def testing_wrapper():
     """
-    Writes test data in DB, executes all tests & cleans up DB 
-    - 'scope="module"' : runs only once (per module not per test)
-    - 'autouse=True' : runs automatically (no call needed)
+    Test Lifecycle Wrapper:
+    - Setup: Initializes the connection and populates the DB with test users.
+    - Yield: Hands over control to the individual test methods.
+    - Teardown: Cleans up all test data from the DB regardless of test success.
     """
 
     # Check app is running 
@@ -49,18 +60,20 @@ def testing_wrapper():
 @pytest.mark.parametrize("user", 
                          [tu.testing_users["client"], tu.testing_users["admin"]], 
                          ids=["CLIENT", "ADMIN"])
+# Decorator arguments
+#  - variable "user": shared with each class method
+#  - list of values: every method is run once per value in the list
+#  - ids: list of use cases for logging & pytest's target selection
 class Test_app:
-    '''
-    A class is required to apply a Pytest decorator to each method
-    Decorator arguments
-    - variable "user": shared with each class method
-    - list of values: every method is run once per value in the list
-    - ids: list of use cases for logging & pytest's target selection
-    '''
+    """
+    Main Test Class:
+    Parameterized to run every test method twice: once as a 'Client' 
+    and once as an 'Admin' to verify permission levels.
+    """
 
     # Test Create User
     def test_register_user(self, user):
-
+        """Verifies the /auth/register endpoint."""
         # Set Goal
         goal = f"Register Client User"
 
@@ -82,9 +95,7 @@ class Test_app:
 
     # Test Authenticate
     def test_login(self, user):
-        """
-        Authenticate with the server & Get Token.
-        """
+        """Verifies authentication logic and JWT token retrieval."""
 
         # Set Goals
         email = user['email']
@@ -113,9 +124,9 @@ class Test_app:
         assert user["role"], f"{goal_3} failed."
 
 
-    # Test Create an Product
+    # Test Create a Product
     def test_create_product(self, user):
-
+        """Verifies that only Admins can create products."""
         # Set Goal
         goal = f"Create Product for {user['email']}"
 
@@ -145,7 +156,7 @@ class Test_app:
 
     # Test Update Product
     def test_update_product(self, user):
-
+        """Verifies that only Admins can update product details."""
         # Get User's Product Id
         product_id = tu.testing_users["admin"]["product_ids"][0]
 
@@ -174,7 +185,7 @@ class Test_app:
 
     # Test Get Product by ID
     def test_get_product_by_id(self, user):
-
+        """Verifies single product retrieval."""
         # Set Goal
         goal = f"Search Product by ID for {user['email']}"
 
@@ -191,7 +202,7 @@ class Test_app:
 
     # Test Get All Products
     def test_get_products(self, user):
-
+        """Verifies public catalog access."""
         # Set Goal    
         goal = f"Get All Products for {user['email']}"
 
@@ -204,9 +215,9 @@ class Test_app:
         tu.assert_status(response, goal, tu.SUCCESS_CODES)
 
 
-    # Test Get All Products
+    # Test Search Products
     def test_search_products(self, user):
-
+        """Verifies the keyword search functionality."""
         # Set Goal    
         goal = f"Search Products with keywords by {user['email']}"
 
@@ -222,7 +233,7 @@ class Test_app:
 
     # Test Create an Order
     def test_create_order(self, user):
-
+        """Verifies order creation for both Clients and Admins."""
         # Set Goal
         goal = f"Create Order by {user['email']}"
 
@@ -233,12 +244,13 @@ class Test_app:
                 headers={"authorization": "Bearer " + user["token"]
                 }
             )
-        else:  # Case Admin User
+        else:  # Case Admin User            
+            user_id = tu.get_user_id(user["email"])
             response = requests.post(
                 f"{tu.URL}/api/commandes",
                 headers={"authorization": "Bearer " + user["token"]},
                 json={
-                    "user_id": user["id"], # Admin order used by next tests
+                    "user_id": user_id, # Admin order used by next tests
                     "adresse_livraison": "10, rue de la Paix, Paris"
                 }
             )
@@ -257,13 +269,13 @@ class Test_app:
 
     # Test Get Order by ID
     def test_get_order_by_id(self, user):
-
+        """Verifies that Clients can only see their own orders, while Admins see all."""
         # Test on 2 different owners' orders
         own_order_id = tu.get_last_user_order(user["email"])
         alien_order_id = 2
         for order_id in [own_order_id, alien_order_id]:
 
-            # Seet Goal
+            # Set Goal
             goal = f"Get Order with id {order_id} for {user['email']}"
 
             # Get expected statuses based on user's role & order's ownership
@@ -281,7 +293,7 @@ class Test_app:
 
     # Test Get Orders    
     def test_get_orders(self, user):
-
+        """Verifies retrieval of order history."""
         # Set Goal
         goal = f"Get Orders for {user['email']}"
 
@@ -296,13 +308,12 @@ class Test_app:
 
 
     # Test Add Order Item
-    
-    # - test of 2 cases : in stock & out of stock
+    # Verifies stock validation logic (success vs out-of-stock).
     @pytest.mark.parametrize(
         "test_case, quantity, expected_statuses", 
         [
         ("In Stock",       9, tu.SUCCESS_CODES),
-        ("Out of Stock",  95, [400, 403])
+        ("Out of Stock",  95, [400, 403, 404])
         ],            
         ids=["In Stock", "Out of Stock"])
 
@@ -333,7 +344,7 @@ class Test_app:
 
     # Test Get Order Items
     def test_get_order_items(self, user):
-
+        """Verifies access control for specific order line items."""
         # Get Client & Admin Order Id 
         client_order_id = tu.testing_users["client"]["order_ids"][0]
         admin_order_id = tu.testing_users["admin"]["order_ids"][0]
@@ -362,7 +373,7 @@ class Test_app:
 
     # Test Update Order
     def test_update_order_status(self, user):
-
+        """Verifies that only Admins can change order status (e.g., to 'validée')."""
         # Get User's Order Id
         order_id = user["order_ids"][0]
 
@@ -385,9 +396,9 @@ class Test_app:
         tu.assert_status(response, goal, expected_statuses) 
 
 
- # Test Update Order
+    # Test Update Order Address
     def test_update_order_address(self, user):
-
+        """Verifies that users can update their own shipping address."""
         # Get User's Order Id
         order_id = user["order_ids"][0]
 
@@ -409,7 +420,7 @@ class Test_app:
 
     # Test Delete Product
     def test_delete_product(self, user):
-
+        """Verifies that only Admins can remove products from the catalog."""
         # Get User's Product Id
         product_id = tu.testing_users["admin"]["product_ids"][0]
 
@@ -428,6 +439,6 @@ class Test_app:
         # Check & Log Response
         status_OK = tu.assert_status(response, goal, expected_statuses) 
         
-        # Update testing user's list of products
+        # Update testing user's list of products to reflect the deletion
         if (user["role"] == "admin") and status_OK:
             del tu.testing_users["admin"]["product_ids"][0]

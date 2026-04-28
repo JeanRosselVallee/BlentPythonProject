@@ -1,3 +1,9 @@
+{# Goal: #}
+{# - display the products added to the cart #}
+{# - allow users to remove items from their current selection #}
+{# - provide a summary of the total price #}
+{# - facilitate the checkout process by capturing delivery information #}
+
 {% extends "layout.html" %}
 
 {% block title %}Mon Panier{% endblock %}
@@ -34,27 +40,38 @@
 
 {% block scripts %}
 <script>
+    /**
+     * Entry point: Trigger cart loading once the DOM is fully parsed.
+     */
     document.addEventListener('DOMContentLoaded', loadCart);
 
+    /**
+     * @function loadCart
+     * @description Fetches cart line items from the API, calculates the total, 
+     * and dynamically injects the HTML table into the container.
+     */
     async function loadCart() {
         const token = localStorage.getItem('token');
         const orderId = localStorage.getItem('active_cart_id');
         const container = document.getElementById('cart-container');
         const summary = document.getElementById('cart-summary');
 
+        // Check if there is an active cart ID in local storage
         if (!orderId) {
             container.innerHTML = '<div class="alert alert-info">Votre panier est vide.</div>';
             return;
         }
 
         try {
-            // Fetch items in the cart
+            // API call to retrieve order lines
             const response = await fetch(`/api/commandes/${orderId}/lignes`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const items = await response.json();
 
-            if (items.length === 0) {
+            // Handle empty cart response
+            error_no_items = (!response.ok && items.error && items.error.startsWith("No order items found"));
+            if ((items.length === 0) || (error_no_items)) {
                 container.innerHTML = '<div class="alert alert-info">Votre panier est vide.</div>';
                 summary.classList.add('d-none');
                 return;
@@ -80,7 +97,7 @@
                 total += subtotal;
                 html += `
                     <tr>
-                        <td><strong>${item.produit_id || 'N/A'}</strong></td>
+                        <td><strong>${item.nom || 'N/A'}</strong></td>
                         <td>${item.prix_unitaire.toFixed(2)} €</td>
                         <td>${item.quantite}</td>
                         <td class="fw-bold">${subtotal.toFixed(2)} €</td>
@@ -93,14 +110,22 @@
 
             html += '</tbody></table>';
             container.innerHTML = html;
+            
+            // Update the total price in the UI
             document.getElementById('cart-total').innerText = total.toFixed(2);
             summary.classList.remove('d-none');
 
         } catch (error) {
+            // Error handling for failed API requests
             container.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement.</div>';
         }
     }
 
+    /**
+     * @function deleteLine
+     * @description Sends a DELETE request to the API to remove a specific item from the cart.
+     * @param {number} lineId - The ID of the specific order line to be deleted.
+     */
     async function deleteLine(lineId) {
         const token = localStorage.getItem('token');
         if (!confirm("Supprimer cet article ?")) return;
@@ -109,27 +134,43 @@
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        loadCart(); // Reload the view
-        updateCartUI(); // Update the navbar count
+        
+        // Refresh the cart list and navbar counter after deletion
+        loadCart(); 
+        updateCartUI(); 
     }
 
+    /**
+     * @function showCheckout
+     * @description Displays the checkout section and scrolls the window to the bottom.
+     */
     function showCheckout() {
         document.getElementById('checkout-section').classList.remove('d-none');
         window.scrollTo(0, document.body.scrollHeight);
     }
 
+    /**
+     * @function hideCheckout
+     * @description Hides the checkout/delivery information section.
+     */
     function hideCheckout() {
         document.getElementById('checkout-section').classList.add('d-none');
     }
 
+    /**
+     * @function processCheckout
+     * @description Finalizes the purchase by sending the delivery address to the server,
+     * then clears the local cart reference and redirects to the catalog.
+     */
     async function processCheckout() {
         const token = localStorage.getItem('token');
         const orderId = localStorage.getItem('active_cart_id');
         const address = document.getElementById('delivery-address').value;
 
+        // Basic validation for delivery address
         if (!address) return alert("Veuillez saisir une adresse.");
 
-        // PUT request to update order status and address
+        // Patch request to update order metadata
         const response = await fetch(`/api/commandes/${orderId}`, {
             method: 'PATCH',
             headers: {
@@ -143,7 +184,8 @@
 
         if (response.ok) {
             alert("Merci pour votre achat !");
-            localStorage.removeItem('active_cart_id'); // Clear current cart
+            // Clear active cart from local storage after successful checkout
+            localStorage.removeItem('active_cart_id'); 
             window.location.href = "{{ url_for('web.catalog') }}";
         }
     }

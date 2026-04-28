@@ -1,3 +1,9 @@
+{# Goal: #}
+{# - Provide a user interface for new users to create an account #}
+{# - Implement client-side validation for password matching #}
+{# - Handle the asynchronous POST request to the registration API #}
+{# - Provide visual feedback for successful account creation and automatic redirection #}
+
 {% extends "layout.html" %}
 
 {% block title %}Inscription{% endblock %}
@@ -49,7 +55,13 @@
 
 {% block scripts %}
 <script>
+    /**
+     * @event submit
+     * @description Handles the registration form submission. It performs local 
+     * validation before sending data to the server and manages the post-registration UI state.
+     */
     document.getElementById('register-form').addEventListener('submit', async (e) => {
+        // Prevent default browser form submission
         e.preventDefault();
         
         const name = document.getElementById('name').value;
@@ -60,7 +72,7 @@
         const errorDiv = document.getElementById('error-message');
         const successDiv = document.getElementById('success-message');
 
-        // Basic Client-Side Validation
+        // Basic Client-Side Validation: Ensure passwords match before hitting the API
         if (password !== confirmPassword) {
             errorDiv.textContent = "Les mots de passe ne correspondent pas.";
             errorDiv.classList.remove('d-none');
@@ -68,6 +80,7 @@
         }
 
         try {
+            // Perform the registration request
             const response = await fetch('/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -81,17 +94,21 @@
             const data = await response.json();
 
             if (response.ok) {
+                // Clear errors and show success message
                 errorDiv.classList.add('d-none');
                 successDiv.classList.remove('d-none');
-                // Redirect to login after 2 seconds
+                
+                // UX Improvement: Redirect to login after 2 seconds to let user read the success message
                 setTimeout(() => {
                     window.location.href = "{{ url_for('web.login') }}";
                 }, 2000);
             } else {
+                // Handle API-level errors (e.g., Email already exists)
                 errorDiv.textContent = data.message || "Erreur lors de l'inscription";
                 errorDiv.classList.remove('d-none');
             }
         } catch (error) {
+            // Handle connectivity issues
             errorDiv.textContent = "Erreur de connexion au serveur";
             errorDiv.classList.remove('d-none');
         }

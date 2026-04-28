@@ -1,8 +1,14 @@
-flask
-flask-sqlalchemy
-flask-migrate
-Faker # generate fake data
-requests # test HTTP responses
-pyjwt # authentication by token
-flake8 # check code style
-pytest # testing
+# Web Framework & Extensions
+flask                 # Core web framework for the API and routing
+flask-sqlalchemy      # ORM to handle SQLite database interactions
+# flask-migrate         # In production, Handles database schema migrations and versioning
+
+# Authentication & Security
+pyjwt                 # JSON Web Token implementation for secure user sessions
+python-dotenv         # Loads configuration/secrets from the .env file
+
+# Testing & Development Utilities
+pytest                # Automated testing framework for running Test_app
+requests              # HTTP library used by the test suite to query the API
+Faker                 # Utility to generate realistic test data (names, emails)
+flake8                # Linter to ensure Python code follows PEP 8 style guides

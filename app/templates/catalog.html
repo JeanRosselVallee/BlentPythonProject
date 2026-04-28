@@ -1,3 +1,9 @@
+{# Goal: #}
+{# - Display a searchable and filterable grid of all available products #}
+{# - Provide an interface for clients to select quantities and add items to their cart #}
+{# - Offer administrative tools for CRUD operations (Create, Update, Delete) on products #}
+{# - Manage role-based UI adjustments (Admin controls vs Client view) #}
+
 {% extends "layout.html" %}
 
 {% block title %}Catalogue des Produits{% endblock %}
@@ -82,6 +88,10 @@
 <script>
     let productModal;
 
+    /**
+     * Entry point: Initialize Bootstrap modal, setup the UI based on user role, 
+     * and trigger the initial product data fetch.
+     */
     document.addEventListener('DOMContentLoaded', () => {
         const modalElement = document.getElementById('productModal');
         if (modalElement) productModal = new bootstrap.Modal(modalElement);
@@ -89,22 +99,26 @@
         loadCatalog();
     });
 
+    /**
+     * @function setupRoleUI
+     * @description Adjusts the interface visibility based on the user's role 
+     * (Admin vs Client). Hides cart features for admins and shows stock management tools.
+     */
     function setupRoleUI() {
         const userRole = (localStorage.getItem('user_role') || "client").toLowerCase().trim();
         const isAdmin = userRole === 'admin';
         
-        // 1. Show/Hide Admin Controls (Search ID & Add Product)
+        // Toggle Admin-only controls
         const adminDiv = document.getElementById('admin-controls');
         if (isAdmin && adminDiv) adminDiv.classList.remove('d-none');
         
-        // 2. Change Page Title
+        // Update the page header text
         const titleElement = document.getElementById('catalog-title');
         if (titleElement) titleElement.innerText = isAdmin ? "Gestion Produits & Stocks" : "Catalogue Produits";
 
-        // 3. Hide the "Panier" button in the Navbar for Admin
-        // This targets the button usually found in layout.html
+        // Remove shopping-specific navigation elements if user is an admin
         const cartButton = document.querySelector('a[href*="cart"]'); 
-        const cartBadge = document.getElementById('cart-count-badge'); // Your navbar badge
+        const cartBadge = document.getElementById('cart-count-badge'); 
         
         if (isAdmin) {
             if (cartButton) cartButton.style.display = 'none';
@@ -112,16 +126,21 @@
         }
     }
 
+    /**
+     * @function loadCatalog
+     * @description Fetches all products (or filtered results) from the API 
+     * and builds the responsive grid of product cards.
+     */
     async function loadCatalog() {
         const grid = document.getElementById('product-grid');
         
-        // 1. Get the current URL parameters
+        // Read URL search parameters (e.g., /catalog?keywords=laptop)
         const urlParams = new URLSearchParams(window.location.search);
         
         try {
             let apiUrl = '/api/produits';
 
-            // 2. If there are parameters (like keywords), append them to the API call
+            // Append search filters to the API request if present
             if (urlParams.toString()) {
                 apiUrl += `?${urlParams.toString()}`;
             }
@@ -129,7 +148,6 @@
             const response = await fetch(apiUrl);
             const products = await response.json();
 
-            // 3. Clear and handle empty results
             if (!products || products.length === 0) {
                 grid.innerHTML = '<div class="alert alert-info">Aucun produit trouvé pour votre recherche.</div>';
                 return;
@@ -137,7 +155,7 @@
 
             const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
 
-            // 4. Render products
+            // Map product objects to HTML Card components
             grid.innerHTML = products.map(p => `
                 <div class="card h-100 shadow-sm">
                     <div class="card-body">
@@ -184,12 +202,23 @@
         }
     }
 
+    /**
+     * @function handleAddToCartClick
+     * @description Orchestrator for the add-to-cart action. Extracts quantity 
+     * from the specific product input before calling the API function.
+     * @param {number} productId - Unique ID of the product.
+     */
     function handleAddToCartClick(productId) {
         const qtyInput = document.getElementById(`qty-${productId}`);
         const quantity = parseInt(qtyInput.value) || 1;
         addToCart(productId, quantity);
     }
 
+    /**
+     * @function searchProductById
+     * @description Fetches a single product by its ID and renders a detailed 
+     * single-card view instead of the full grid.
+     */
     async function searchProductById() {
         const id = document.getElementById('searchIdInput').value.trim();
         const grid = document.getElementById('product-grid');
@@ -209,6 +238,7 @@
             }
 
             const result = await response.json();
+            // Handle variations in API response format (array vs object)
             const p = Array.isArray(result) ? result[0] : result;
             const isAdmin = (localStorage.getItem('user_role') || "").toLowerCase().trim() === 'admin';
 
@@ -248,14 +278,22 @@
                     </div>
                 </div>`;
         } catch (error) {
-            console.error(error);
+            console.error("ID Search Error:", error);
         }
     }
 
+    /**
+     * @function addToCart
+     * @description Communicates with the backend to create an order (if none active) 
+     * and add the specified product and quantity to the cart line items.
+     * @param {number} productId - Unique ID of the product.
+     * @param {number} quantity - Number of items to add.
+     */
     async function addToCart(productId, quantity) {
         const token = localStorage.getItem('token');
         let orderId = localStorage.getItem('active_cart_id');
 
+        // Step 1: Create a new order if the user doesn't have an active cart session
         if (!orderId || orderId === "null") {
             const res = await fetch('/api/commandes', {
                 method: 'POST',
@@ -266,6 +304,7 @@
             localStorage.setItem('active_cart_id', orderId);
         }
 
+        // Step 2: Post the line item (product and quantity) to the order
         try {
             const resItem = await fetch(`/api/commandes/${orderId}/lignes`, {
                 method: 'POST',
@@ -274,6 +313,7 @@
             });
 
             if (resItem.ok) {
+                // Refresh global navbar UI if the function exists
                 if (typeof updateCartUI === "function") updateCartUI();
                 alert(`${quantity} article(s) ajouté(s) au panier !`);
             } else {
@@ -285,6 +325,12 @@
         }
     }
 
+    /**
+     * @function openProductModal
+     * @description Populates and shows the Bootstrap modal. Can be used to create 
+     * a new product or edit an existing one.
+     * @param {Object|null} product - The product object to edit, or null for creation.
+     */
     function openProductModal(product = null) {
         document.getElementById('productForm').reset();
         if (product) {
@@ -302,6 +348,11 @@
         productModal.show();
     }
 
+    /**
+     * @function saveProduct
+     * @description Collects form data and sends a PUT (update) or POST (create) 
+     * request to the API to persist product changes.
+     */
     async function saveProduct() {
         const id = document.getElementById('edit-product-id').value;
         const token = localStorage.getItem('token');
@@ -319,9 +370,17 @@
             body: JSON.stringify(data)
         });
 
-        if (res.ok) { productModal.hide(); loadCatalog(); }
+        if (res.ok) { 
+            productModal.hide(); 
+            loadCatalog(); 
+        }
     }
 
+    /**
+     * @function deleteProduct
+     * @description Deletes a product record after user confirmation via a DELETE request.
+     * @param {number} id - Unique ID of the product to delete.
+     */
     async function deleteProduct(id) {
         if (!confirm("Supprimer ce produit ?")) return;
         const res = await fetch(`/api/produits/${id}`, {

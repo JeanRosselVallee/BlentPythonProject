@@ -1,3 +1,9 @@
+{# Goal: #}
+{# - Provide a consistent navigation bar and footer across all pages #}
+{# - Handle global authentication states (Login/Logout/Role-based visibility) #}
+{# - Maintain a real-time global cart counter in the header #}
+{# - Implementation of the global product search functionality #}
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -7,6 +13,7 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <style>
         :root {
             --dark-blue: #2c3e50;
@@ -45,7 +52,7 @@
             font-weight: bold;
         }
 
-        /* Product Grid Styling (used by catalog.html) */
+        /* Product Grid Styling (shared for dynamic grids) */
         .product-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -112,27 +119,55 @@
     </nav>
 
     <script>
+        /**
+         * Initialize role-based navigation styling.
+         */
         document.addEventListener('DOMContentLoaded', () => {
             updateNavbarUI();
         });
 
+        /**
+         * @function updateNavbarUI
+         * @description Adjusts visibility and labels of navbar links based on the user role 
+         * stored in localStorage. Specifically hides the cart for Admins.
+         */
         function updateNavbarUI() {
             const userRole = (localStorage.getItem('user_role') || "client").toLowerCase().trim();
             const isAdmin = userRole === 'admin';
             
+            // On cible le parent direct de l'input de recherche pour tout masquer (champ + bouton)
+            const searchContainer = document.getElementById('navSearchInput').closest('.input-group');
             const catalogLink = document.getElementById('nav-catalog-link');
             const cartLink = document.getElementById('nav-cart-link');
-
             const icon = '<i class="bi bi-shop me-2"></i>';
 
+            // Détection des pages où la recherche doit être masquée
+            const currentPath = window.location.pathname;
+            const isOrdersPage = currentPath.includes('/orders');
+            const isCartPage = currentPath.includes('/cart');
+
+            // Masquage de la barre de recherche sur Cart et Orders
+            if (searchContainer) {
+                if (isOrdersPage || isCartPage) {
+                    searchContainer.style.setProperty('display', 'none', 'important');
+                } else {
+                    searchContainer.style.setProperty('display', 'flex', 'important');
+                }
+            }
+
+            // Logique de rôle Admin vs Client
             if (isAdmin) {
                 if (catalogLink) catalogLink.innerHTML = icon + "Gestion Produits";
                 if (cartLink) cartLink.style.display = 'none';
             } else {
                 if (catalogLink) catalogLink.innerHTML = icon + "Catalogue";
-                if (cartLink) cartLink.style.display = 'block';
+                // On masque aussi le panier si on est déjà sur la page panier ou commandes
+                if (cartLink) {
+                    cartLink.style.display = (isOrdersPage || isCartPage) ? 'none' : 'block';
+                }
             }
         }
+
     </script>    
     
     <main class="container mt-4">
@@ -147,11 +182,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        /**
+         * @function updateCartUI
+         * @description Global function to fetch current order items and update 
+         * the total quantity badge in the navbar.
+         */
         async function updateCartUI() {
             const token = localStorage.getItem('token');
             const orderId = localStorage.getItem('active_cart_id');
             const cartCountElement = document.getElementById('cart-count');
 
+            // Reset count if no active session exists
             if (!orderId || !token) {
                 if (cartCountElement) cartCountElement.innerText = "0";
                 return;
@@ -160,13 +201,12 @@
             try {
                 const response = await fetch(`/api/commandes/${orderId}/lignes`, {
                     method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (response.ok) {
                     const items = await response.json();
+                    // Aggregate individual item quantities into a single total
                     const totalQuantity = Array.isArray(items) 
                         ? items.reduce((sum, item) => sum + item.quantite, 0) 
                         : 0;
@@ -178,6 +218,9 @@
             }
         }
 
+        /**
+         * Auth Orchestration: Handles the dynamic rendering of Login vs Account/Logout buttons.
+         */
         document.addEventListener('DOMContentLoaded', () => {
             updateCartUI();
             
@@ -190,7 +233,7 @@
                 const ordersLabel = isAdmin ? "Gestion Commandes" : "Mes Commandes";
                 const ordersRoute = "/orders"; 
 
-                // Uniform height: Using standard btn class (no btn-sm)
+                // Replace 'Login' button with specific Action links and Logout
                 authSection.innerHTML = `    
                     <a href="${ordersRoute}" class="btn btn-outline-light me-2">
                         <i class="bi ${isAdmin ? 'bi-speedometer2' : 'bi-bag-check'} me-1"></i> ${ordersLabel}
@@ -200,28 +243,43 @@
             }
         });
 
+        /**
+         * @function logout
+         * @description Clears security tokens and session IDs from storage 
+         * before redirecting the user to the login page.
+         */
         function logout() {
             localStorage.removeItem('token');
+            localStorage.removeItem('user_role');
             localStorage.removeItem('active_cart_id');
             window.location.href = "{{ url_for('web.login') }}";
         }
 
+        /**
+         * @function submitGlobalSearch
+         * @description Parses keywords from the navbar input and redirects 
+         * the user to the catalog page with relevant search parameters.
+         */
         function submitGlobalSearch() {
             const input = document.getElementById('navSearchInput').value.trim();
             
+            // Redirect to full catalog if search is empty
             if (!input) {
                 window.location.href = "{{ url_for('web.catalog') }}";
                 return;
             }
 
+            // Split by spaces or commas and filter empty strings
             const keywords = input.split(/[\s,]+/).filter(k => k.length > 0);
             const params = new URLSearchParams();
             
+            // Append each keyword as a separate 'keywords' parameter
             keywords.forEach(word => params.append('keywords', word));
 
             window.location.href = `{{ url_for('web.catalog') }}?${params.toString()}`;
         }
 
+        // Allow 'Enter' key to trigger the search function
         document.getElementById('navSearchInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') submitGlobalSearch();
         });

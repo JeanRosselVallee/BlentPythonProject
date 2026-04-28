@@ -20,3 +20,13 @@ DROP TABLE produit;
 drop table commande;
 drop table ligne_commande;
 
+
+SELECT 
+            lc.commande_id, 
+            p.nom, 
+            lc.quantite, 
+            lc.prix_unitaire
+        FROM ligne_commande lc
+     JOIN produit p ON lc.produit_id = p.id 
+     JOIN commande c ON lc.commande_id = c.id 
+     WHERE lc.commande_id = 11 AND c.utilisateur_id = 11;
