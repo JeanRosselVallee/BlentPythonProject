@@ -1,3 +1,7 @@
+-- SQLite Queries for BlentPythonProject
+-- To run a query in Visual Studio's Editor, select the query, right-click, "Run Selected Query"
+
+
 -- SQLite
 select * from utilisateur;
 select * from produit; --where id='42';

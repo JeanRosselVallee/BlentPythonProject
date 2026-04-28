@@ -8,6 +8,13 @@ web_bp = Blueprint('web', __name__)
 
 # --- ROUTES DEFINITION ---
 
+@web_bp.route('/')
+def index():
+    """
+    Redirects to the catalog page.
+    """    
+    return render_template("catalog.html")
+
 @web_bp.route("/catalog")
 def catalog():
     """

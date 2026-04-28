@@ -12,3 +12,6 @@ pytest                # Automated testing framework for running Test_app
 requests              # HTTP library used by the test suite to query the API
 Faker                 # Utility to generate realistic test data (names, emails)
 flake8                # Linter to ensure Python code follows PEP 8 style guides
+
+# Database
+sqllite3              # Built-in library for SQLite database interactions (no installation needed)

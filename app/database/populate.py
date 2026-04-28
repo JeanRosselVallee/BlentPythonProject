@@ -11,7 +11,7 @@ import random
 from faker import Faker  # generate realistic fake data
 
 # Set number of records per table
-NUM_RECORDS = 10
+NUM_RECORDS = 30
 
 # Initialize Faker with French locale for realistic French names/addresses
 fake = Faker('fr_FR')

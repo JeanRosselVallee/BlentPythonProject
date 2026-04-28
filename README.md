@@ -52,6 +52,7 @@ BlentPythonProject/
 ## 🛠️ Installation & Setup
 
 1. **Clone the repository and enter the directory:**
+   Open a terminal:
    ```bash
    cd BlentPythonProject
    ```
@@ -80,7 +81,7 @@ BlentPythonProject/
    ```bash
    python run.py
    ```
-   The server will start at `http://127.0.0.1:5000`.
+   The server will start at `http://127.0.0.1:5000`. (In GitHub Codespaces' Ports tab, click the Globe) 
 
 ---
 
@@ -91,6 +92,16 @@ The API implements **Role-Based Access Control (RBAC)** via JWT decorators:
 - **Admin Role:** Full CRUD access to the product catalog, ability to delete items, and visibility of all customer orders.
 - **Client Role:** Access to browse products, create their own orders, and view their personal order history.
 - **Authentication:** Users must provide a `Bearer <token>` in the `Authorization` header for protected routes.
+
+---
+
+## 🥫 DB Populate
+
+To create tables & generate mock data using **Faker**. 
+```bash
+python -m app.database.populate
+```
+N.B.: to run SQL queries, install SQLite Visual Studio's extension. Cf. file app/database/sql_queries.sql 
 
 ---
 

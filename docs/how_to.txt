@@ -10,6 +10,8 @@ Check
 Clone repository
     git clone https://github.com/JeanRosselVallee/BlentPythonProject.git
 Add .gitconfig & include in .gitignore
+To update sources in a GitHUb Codespace, clone the repository:
+   git pull origin main
 
 ======================== Python ====================
 Install Python extension proposed by VScode
