@@ -97,7 +97,7 @@ The API implements **Role-Based Access Control (RBAC)** via JWT decorators:
 
 ## 🥫 DB Populate
 
-To create tables & generate mock data using **Faker**. 
+Open a 2nd terminal to create tables & generate mock data using **Faker**. 
 ```bash
 python -m app.database.populate
 ```
@@ -142,5 +142,15 @@ python -m pytest -sv --tb=short tests/test_app.py
 - `PATCH /api/commandes/<id>`: Update order status or shipping address.
 - `GET /api/commandes/<id>/lignes`: View order line items.
 - `POST /api/commandes/<id>/lignes`: Add items to an existing order.
+
+## Documentation
+Cf. PDF reports under `docs/`: 
+- `Documentation Technique Principale` : MVC architecture, API security & technical specs
+- `Rapport Technique d'Ecosystème` : Backend infrastructure & API documentation
+- `Documentation Technique du FrontEnd` : Strategic frontend analysis, data flow & components 
+- `Guide de l'utilisateur - Interface Web` : User manual, role management & SQL maintenance
+
+---
+
 """
 ```
