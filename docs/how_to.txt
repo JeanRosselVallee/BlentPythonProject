@@ -38,11 +38,25 @@ Run app & create DB
     python run.py
 Populate DB
     python -m app.database.populate
+
 ========================= SQ Lite ========================
 Install "SQLite" by alexcvzz 
     Left Bar "Extensions"
     Select DB Connection
     Right click => Run query
+
+========================= Code Check ========================
+Format Check & Update Python files : blanks, row length, etc.
+    black --line-length 79 .
+
+Quality Check & Warn : logical errors, unused variables, etc.
+    flake8 config.py
+    flake8 run.py
+    cd app/
+    flake8 .
+    cd tests/
+    flake8 .
+    cd ..
 
 ======================== NotebookLM =========================
 Run in a PowerShell terminal:

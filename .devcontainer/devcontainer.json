@@ -4,11 +4,6 @@
     "name": "Python 3",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
 
-    // Installs the sqlite3 CLI tool and other helpful features automatically
-    "features": {
-        "ghcr.io/devcontainers/features/sqlite3:1": {}
-    },
-
     // Runs once the container is created to ensure your Python environment is ready
     "postCreateCommand": "pip install -r requirements.txt",
 
