@@ -6,5 +6,5 @@ from app import app
 
 if __name__ == "__main__":
     # Start the Flask development server
-    # 'debug=True' enables automatic reloading and provides a debugger in the browser
+    # 'debug=True' enables automatic reloading & provides debugger to browser
     app.run(debug=True)

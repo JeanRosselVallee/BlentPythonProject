@@ -4,13 +4,14 @@ Goal : Test REST API responses for all routes
 REST API Automated Testing Suite
 This module uses Pytest and Requests to verify all API endpoints.
 It tests security (Role-Based Access Control), CRUD operations for products
-and orders, and ensures correct HTTP status codes are returned for each scenario.
+and orders, and ensures correct HTTP status codes
+are returned for each scenario.
 
 Syntax
 Run all tests on terminal:
-   python -m pytest -sv --tb=short <file_path>
+   python -m pytest -sv --tb=short tests/test_app.py
 Run given tests on terminal:
-   python -m pytest -sv --tb=short tests/test_app.py -k "(login or order) and CLIENT"
+   python ... -k "(login or order) and CLIENT"
 Options :
    -m searches modules from root dir rather than library files
    -s displays stdout & SQL queries
@@ -78,7 +79,7 @@ class Test_app:
     def test_register_user(self, user):
         """Verifies the /auth/register endpoint."""
         # Set Goal
-        goal = f"Register Client User"
+        goal = "Register Client User"
 
         # Set New User Data
         new_user = tu.tested_clients.pop()
@@ -266,7 +267,10 @@ class Test_app:
 
     # Test Get Order by ID
     def test_get_order_by_id(self, user):
-        """Verifies that Clients can only see their own orders, while Admins see all."""
+        """
+        Verifies that Clients can only see their own orders,
+        while Admins see all.
+        """
         # Test on 2 different owners' orders
         own_order_id = tu.get_last_user_order(user["email"])
         alien_order_id = 2
@@ -308,7 +312,10 @@ class Test_app:
     # Verifies stock validation logic (success vs out-of-stock).
     @pytest.mark.parametrize(
         "test_case, quantity, expected_statuses",
-        [("In Stock", 9, tu.SUCCESS_CODES), ("Out of Stock", 95, [400, 403, 404])],
+        [
+            ("In Stock", 9, tu.SUCCESS_CODES),
+            ("Out of Stock", 95, [400, 403, 404]),
+        ],
         ids=["In Stock", "Out of Stock"],
     )
     def test_add_order_item(self, user, test_case, quantity, expected_statuses):
@@ -364,7 +371,10 @@ class Test_app:
 
     # Test Update Order
     def test_update_order_status(self, user):
-        """Verifies that only Admins can change order status (e.g., to 'validée')."""
+        """
+        Verifies that only Admins can change order status
+        (e.g., to 'validée').
+        """
         # Get User's Order Id
         order_id = user["order_ids"][0]
 

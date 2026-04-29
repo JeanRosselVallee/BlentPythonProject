@@ -3,14 +3,20 @@
 # retrieval, status updates, and order line item management.
 
 import app.app_utils as au  # Custom utilities for app
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify  # , current_app
 from app.extensions import db
-from app.database.model import Produit, Commande, LigneCommande  #  DB Model Tables
+from app.database.model import (
+    Produit,
+    Commande,
+    LigneCommande,
+)  # DB Model Tables
 from app.auth.decorators import requires_authorization
 from sqlalchemy import text
 
 # Blueprint of Routes for Orders
-orders_bp = Blueprint("orders", __name__)  # id for routing  # current module's path
+orders_bp = Blueprint(
+    "orders", __name__
+)  # id for routing  # current module's path
 
 # --- ROUTES DEFINITION ---
 
@@ -21,7 +27,7 @@ def create_order(data_in_token):
     """
     Creates a new order record.
     - For 'client' role: Automatically associates the order with their user ID.
-    - For 'admin' role: Allows manual assignment of a user ID and delivery address.
+    - For 'admin' role: Allows manual assignment of user ID & delivery address.
     """
     # Get User Data from DB
     user_role = au.get_user_attribute_in_db(data_in_token, "role")
@@ -85,7 +91,9 @@ def add_order_item(order_id, data_in_token):
     """
     # Get Order Data from Request
     submitted_data = request.get_json()
-    missing_fields = not au.check_fields(submitted_data, {"produit_id", "quantite"})
+    missing_fields = not au.check_fields(
+        submitted_data, {"produit_id", "quantite"}
+    )
     if missing_fields:
         return jsonify({"error": "Missing fields."}), 400
 
@@ -110,7 +118,14 @@ def add_order_item(order_id, data_in_token):
     stock = product.quantite_stock
     if quantity > stock:
         return (
-            jsonify({"error": f"{quantity} > stock of {stock} for product id {id}."}),
+            jsonify(
+                {
+                    "error": (
+                        f"{quantity} exceeds stock of {stock} "
+                        f"for product id {id}."
+                    )
+                }
+            ),
             400,
         )
 
@@ -141,10 +156,10 @@ def get_order_items(order_id, data_in_token):
     user_role = au.get_user_attribute_in_db(data_in_token, "role")
 
     selection = """
-        SELECT 
-            lc.commande_id, 
-            p.nom, 
-            lc.quantite, 
+        SELECT
+            lc.commande_id,
+            p.nom,
+            lc.quantite,
             lc.prix_unitaire
         FROM ligne_commande lc
     """
@@ -164,7 +179,10 @@ def get_order_items(order_id, data_in_token):
 
     # Execute the query
     sql_query = text(selection + junction + where_clause)
-    # current_app.logger.debug(f"DEBUG: Executing SQL query for user role {user_role}: {sql_query} with parameters: {sql_params}")
+    # current_app.logger.debug(
+    #     f"DEBUG: Executing SQL query for user role {user_role}: "
+    #     f"{sql_query} with parameters: {sql_params}"
+    # )
     order_items = db.session.execute(sql_query, sql_params)
 
     # Get Data from Query Results
@@ -177,14 +195,17 @@ def get_order_items(order_id, data_in_token):
         return (
             jsonify(
                 {
-                    "error": f"No order items found for order id {order_id} for user {user_email}"
+                    "error": f"No order items found for order id {order_id} "
+                    f"for user {user_email}"
                 }
             ),
             404,
         )
 
     # Convert the result rows into a list of dictionaries
-    items_as_list = [dict(zip(table_headers, row_values)) for row_values in table_rows]
+    items_as_list = [
+        dict(zip(table_headers, row_values)) for row_values in table_rows
+    ]
 
     # Return Order's Items
     return jsonify(items_as_list), 200
@@ -233,7 +254,10 @@ def update_order(order_id, data_in_token):
         if order.adresse_livraison != submitted_data["adresse_livraison"]:
             return (
                 jsonify(
-                    {"error": f"Order with id {order_id} could not be updated in DB."}
+                    {
+                        "error": f"Order with id {order_id} "
+                        f"could not be updated in DB."
+                    }
                 ),
                 404,
             )
@@ -250,7 +274,10 @@ def update_order(order_id, data_in_token):
         if user_role != "admin":
             return (
                 jsonify(
-                    {"error": f"User {user_email} not authorized to update orders."}
+                    {
+                        "error": f"User {user_email} not authorized "
+                        f"to update orders."
+                    }
                 ),
                 403,
             )
@@ -270,7 +297,10 @@ def update_order(order_id, data_in_token):
         if new_status_in_db != submitted_data["status"]:
             return (
                 jsonify(
-                    {"error": f"Order with id {order_id} could not be updated in DB."}
+                    {
+                        "error": f"Order with id {order_id} could not "
+                        f"be updated in DB."
+                    }
                 ),
                 404,
             )
@@ -284,7 +314,9 @@ def update_order(order_id, data_in_token):
             # Update Stocks of products in the order
 
             # Scan Order Items
-            order_items = LigneCommande.query.filter_by(commande_id=order_id).all()
+            order_items = LigneCommande.query.filter_by(
+                commande_id=order_id
+            ).all()
             for item in order_items:
 
                 # Get Product Id & Quantity
@@ -297,7 +329,9 @@ def update_order(order_id, data_in_token):
                 # Check Product Stock
                 if not product or (product.quantite_stock < quantity_in_order):
                     return (
-                        jsonify({"error": f"No stock for product with id {id}."}),
+                        jsonify(
+                            {"error": f"No stock for product with id {id}."}
+                        ),
                         400,
                     )
 
@@ -332,13 +366,18 @@ def get_order_by_id(order_id, data_in_token):
     else:
 
         # Client access only to own order
-        order = Commande.query.filter_by(id=order_id, utilisateur_id=user_id).first()
+        order = Commande.query.filter_by(
+            id=order_id, utilisateur_id=user_id
+        ).first()
 
     # Check Order exists
     if not order:
         return (
             jsonify(
-                {"error": f"No order found with id {order_id} for user {user_email}"}
+                {
+                    "error": f"No order found with id {order_id} "
+                    f"for user {user_email}"
+                }
             ),
             404,
         )

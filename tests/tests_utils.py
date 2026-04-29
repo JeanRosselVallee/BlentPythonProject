@@ -1,6 +1,6 @@
 # Test Utility Library
 # This module provides helper functions for the automated test suite, including
-# server connectivity checks, database seeding/cleanup, and response assertions.
+# server connectivity checks, database seeding/cleanup, and response assertions
 
 import requests
 import json
@@ -75,9 +75,12 @@ def check_connection_to_server():
 
 
 # Get user instance from DB with email
-get_user = lambda email: Utilisateur.query.filter_by(email=email).first()
+def get_user(email):
+    user_instance = Utilisateur.query.filter_by(email=email).first()
+    return user_instance
 
 
+# Get user id from DB with email
 def get_user_id(email):
     """Retrieves a user's database ID via their email address."""
     with app.app_context():
@@ -124,7 +127,8 @@ def create_testing_users():
 def delete_test_data():
     """
     Cleans up all data generated during tests (Orders, Items, and Products).
-    Maintains referential integrity by deleting child records (Items) before Parents (Orders).
+    Maintains referential integrity by deleting child records (Items)
+    before Parents (Orders).
     """
     with app.app_context():
         # Clear test data in cascade
@@ -163,7 +167,8 @@ def delete_test_data():
                 # Delete testing_users
                 # db.session.delete(user_instance)
                 # logging.info(f"Deleted user {user['email']}.")
-                # test users are kept in DB on purpose for client's acceptance tests
+                # test users are kept in DB on purpose
+                # for client's acceptance tests
 
                 db.session.commit()
 
@@ -192,7 +197,10 @@ def get_last_user_order(user_email):
 
 
 def get_expected_status_per_role(user_role):
-    """Returns valid HTTP status codes based on user permissions for protected actions."""
+    """
+    Returns valid HTTP status codes based on user permissions
+    for protected actions.
+    """
     if user_role == "admin":
         expected_statuses = SUCCESS_CODES
     else:
@@ -203,7 +211,10 @@ def get_expected_status_per_role(user_role):
 def get_expected_status_for_order_ownership(
     user_role, current_order_id, last_own_order_id
 ):
-    """Checks if a user has the right to access a specific order based on role or ownership."""
+    """
+    Checks if a user has the right to access a specific order
+    based on role or ownership.
+    """
     user_is_admin = user_role == "admin"
     order_is_own = current_order_id == last_own_order_id
     if user_is_admin or order_is_own:
@@ -233,7 +244,10 @@ def assert_status(response, test_goal, expected_statuses):
     content = response.content.decode("utf-8")
 
     # Log Error if any
-    error_message = f"{test_goal} got status code {response.status_code} but expected {expected_statuses}"
+    error_message = (
+        f"{test_goal} got status code {response.status_code} "
+        f"but expected {expected_statuses}"
+    )
     if not status_OK:
         error_message = f"{error_message}. {response.json()['error']}"
         logging.error(error_message)

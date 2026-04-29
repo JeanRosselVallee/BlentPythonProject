@@ -1,9 +1,9 @@
 # Application Factory and Initialization
 # This script initializes the Flask application, configures the database,
-# registers all functional blueprints, and ensures the database tables are created.
+# registers all functional blueprints, and
+# ensures the database tables are created.
 
-import app.app_utils as au  # Custom Library
-import logging
+# import logging
 
 from flask import Flask
 
@@ -29,10 +29,13 @@ def create_app():
 
     # DB setup
     # Configuring the SQLite database location and disabling overhead tracking
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///digimarket.db"  # ~URL to DB file
+    db_uri = "sqlite:///digimarket.db"  # ~URL to DB file
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
-    # app.config.from_object(Config)     # DEBUG: SQL Queries automatically printed
+
+    # DEBUG: SQL Queries automatically printed
+    # app.config.from_object(Config)
 
     # Blueprint Routes Registration
 

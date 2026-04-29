@@ -1,5 +1,6 @@
 # Web Routes for Frontend Pages (HTML Templates)
-# This module handles the routing for the user interface, serving the Jinja2 templates.
+# This module handles the routing for the user interface,
+#  serving the Jinja2 templates.
 
 from flask import Blueprint, render_template
 
@@ -58,6 +59,7 @@ def cart():
 def orders():
     """
     Order history and management page.
-    Clients see their past purchases, while admins see all orders to manage status.
+    Clients see their past purchases,
+    while admins see all orders to manage status.
     """
     return render_template("orders.html")

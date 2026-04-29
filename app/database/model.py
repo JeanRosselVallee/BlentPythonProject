@@ -1,6 +1,7 @@
 # Database Models
 # This module defines the database schema using SQLAlchemy ORM.
-# It establishes the tables, columns, and relationships for the e-commerce system.
+# It establishes the tables, columns,
+# & relationships for the e-commerce system.
 
 from app.extensions import db
 from datetime import datetime, timezone
@@ -63,7 +64,9 @@ class Commande(db.Model):
     statut = db.Column(db.String(50), nullable=False, default="en_attente")
 
     # Relationship: One order links to many line items (LigneCommande)
-    lignes = db.relationship("LigneCommande", backref="commande_parent", lazy=True)
+    lignes = db.relationship(
+        "LigneCommande", backref="commande_parent", lazy=True
+    )
 
 
 class LigneCommande(db.Model):
@@ -75,7 +78,13 @@ class LigneCommande(db.Model):
 
     __tablename__ = "ligne_commande"
     id = db.Column(db.Integer, primary_key=True)
-    commande_id = db.Column(db.Integer, db.ForeignKey("commande.id"), nullable=False)
-    produit_id = db.Column(db.Integer, db.ForeignKey("produit.id"), nullable=False)
+    commande_id = db.Column(
+        db.Integer, db.ForeignKey("commande.id"), nullable=False
+    )
+    produit_id = db.Column(
+        db.Integer, db.ForeignKey("produit.id"), nullable=False
+    )
     quantite = db.Column(db.Integer, nullable=False)
-    prix_unitaire = db.Column(db.Float, nullable=False)  # Price at moment of sale
+    prix_unitaire = db.Column(
+        db.Float, nullable=False
+    )  # Price at moment of sale

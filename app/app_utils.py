@@ -40,8 +40,12 @@ def verify_token(token):
     returns payload = data stored in token
     """
     try:
-        # current_app.logger.debug(f"DEBUG: Token received for verification: '{token}'")
-        payload = jwt.decode(token, SECRET_PHRASE, algorithms=["HS256"])  # plural
+        # current_app.logger.debug(
+        #     f"DEBUG: Token received for verification: '{token}'"
+        # )
+        payload = jwt.decode(
+            token, SECRET_PHRASE, algorithms=["HS256"]  # plural
+        )
         return payload
     except Exception as e:
         current_app.logger.error(f"ERROR in verify_token(): {e}")
@@ -127,12 +131,13 @@ def search_items(db, table, field_1, field_2, keywords):
         items_as_dicts = [dict(row._mapping) for row in items]
         return jsonify(items_as_dicts), 200
     else:  # Case OK : No Product found
-        return jsonify({f"message": f"No records contain {keywords}"}), 204
+        return jsonify({"message": f"No records contain {keywords}"}), 204
 
 
 def check_fields(body, fields):
     """
-    Validates that the required keys are present in a dictionary (typically request.get_json()).
+    Validates that the required keys are present in
+    a dictionary (typically request.get_json()).
     Returns True if all required fields are available.
     """
     required_fields = set(fields)

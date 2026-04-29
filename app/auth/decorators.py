@@ -1,9 +1,9 @@
 # Authentication Decorators
-# This module provides reusable decorators to secure API endpoints by verifying JWT tokens.
+# Provides reusable decorators to secure API endpoints by verifying JWT tokens
 
 import app.app_utils as au  # Custom Library for token verification
 from flask import request, jsonify
-from functools import wraps  # Ensures decorated functions keep their original identity
+from functools import wraps  # decorated functions keep original identity
 
 
 def requires_authorization(target_function):
@@ -11,7 +11,7 @@ def requires_authorization(target_function):
     Decorator to protect API routes.
     It checks for a valid Bearer token in the 'Authorization' header.
 
-    If valid: Injects the decrypted token data into the target function's arguments.
+    If valid: Injects decrypted token data into target function's arguments
     If invalid: Returns a 401 Unauthorized error.
     """
 
@@ -30,7 +30,9 @@ def requires_authorization(target_function):
 
             if not data_in_token:
                 return (
-                    jsonify({"error": "Accès refusé : jeton invalide oue expiré"}),
+                    jsonify(
+                        {"error": "Accès refusé : jeton invalide ou expiré"}
+                    ),
                     401,
                 )
 
@@ -45,9 +47,7 @@ def requires_authorization(target_function):
             # Triggered if the header is missing or incorrectly formatted
             return (
                 jsonify(
-                    {
-                        "error": "Format d'autorisation invalide. Utilisez 'Bearer <token>'"
-                    }
+                    {"error": "Format invalide. Utilisez 'Bearer <token>'"}
                 ),
                 401,
             )

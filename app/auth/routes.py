@@ -1,16 +1,18 @@
 # Authentication API Routes
-# This module handles user registration and login logic, interacting with the database
+# This module handles user registration and login logic,
+# interacting with the database
 # and managing security via password hashing and JWT token generation.
 
-import app.app_utils as au  # Custom utilities for token generation and field validation
-from flask import Blueprint, request, jsonify, current_app
+import app.app_utils as au  # Custom utilities (token generation & field check)
+from flask import Blueprint, request, jsonify  # , current_app
 from app.extensions import db
 from app.database.model import Utilisateur
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # Define the Blueprint for authentication
 auth_bp = Blueprint(
-    "auth", __name__  # ID for internal routing and URL prefixing  # Current module path
+    "auth",  # ID for internal routing & URL prefixing
+    __name__,  # Current module path
 )
 
 # --- ROUTES DEFINITION ---
@@ -53,7 +55,10 @@ def register_user():
         if user_is_already_in_db:
             return (
                 jsonify(
-                    {"error": f"{f_name}: User {new_user.email} already exists in DB."}
+                    {
+                        "error": f"{f_name}: User {new_user.email} "
+                        f"already exists in DB."
+                    }
                 ),
                 400,
             )
@@ -83,7 +88,10 @@ def login():
     # Get credentials from request body
     submitted_data = request.get_json()
     if not au.check_fields(submitted_data, {"email", "password"}):
-        return jsonify({"error": f"{f_name}: Missing credentials in request."}), 400
+        return (
+            jsonify({"error": f"{f_name}: Missing credentials in request."}),
+            400,
+        )
 
     submitted_email = submitted_data["email"]
     submitted_password = submitted_data["password"]
@@ -92,7 +100,9 @@ def login():
     user_in_db = Utilisateur.query.filter_by(email=submitted_email).first()
     if not user_in_db:
         return (
-            jsonify({"error": f"{f_name}: User {submitted_email} not found in DB"}),
+            jsonify(
+                {"error": f"{f_name}: User {submitted_email} not found in DB"}
+            ),
             404,
         )
 
