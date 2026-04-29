@@ -1,5 +1,5 @@
 # Application Utility Functions
-# This module contains shared logic for JWT authentication, generic database 
+# This module contains shared logic for JWT authentication, generic database
 # retrieval, keyword searching, and data validation used across all blueprints.
 
 import os
@@ -25,13 +25,11 @@ def generate_json_token(user_login):
     now = datetime.now(timezone.utc)
     expire_time = now + timedelta(hours=1)
     token = jwt.encode(
-        {   "expire_time": expire_time.timestamp(), 
-            "login": user_login
-        },
+        {"expire_time": expire_time.timestamp(), "login": user_login},
         SECRET_PHRASE,
         algorithm="HS256",  # singular
     )
-    #return jsonify({"token": token})
+    # return jsonify({"token": token})
     return token
 
 
@@ -39,7 +37,7 @@ def generate_json_token(user_login):
 def verify_token(token):
     """
     Decodes and validates a provided JWT.
-    returns payload = data stored in token 
+    returns payload = data stored in token
     """
     try:
         # current_app.logger.debug(f"DEBUG: Token received for verification: '{token}'")
@@ -49,6 +47,7 @@ def verify_token(token):
         current_app.logger.error(f"ERROR in verify_token(): {e}")
         return None
 
+
 # Get Email from Token
 def get_email_from_token(token):
     """
@@ -57,6 +56,7 @@ def get_email_from_token(token):
     payload = verify_token(token)
     user_email = payload.login
     return user_email
+
 
 # Get items from DB for Routes Definition
 def get_items(table, field=None, item_id=None):
@@ -68,17 +68,17 @@ def get_items(table, field=None, item_id=None):
     - item_id (optional): filter value
     Return: JSON string of items and HTTP status code
     """
-           
+
     if item_id:
         # Filtered query (e.g., specific ID or User ID)
         target_items = table.query.filter(field == item_id)
         nb_items = target_items.count()
-        
+
     else:
         # Unfiltered query for all records
         target_items = table.query.all()
         nb_items = len(target_items)
-        
+
     if target_items and nb_items > 0:
         # Convert SQLAlchemy objects into serializable dictionaries
         items = [
@@ -91,43 +91,43 @@ def get_items(table, field=None, item_id=None):
 
 
 def search_items(db, table, field_1, field_2, keywords):
-        """
-        Performs a multi-keyword search across two database fields.
-        Each word must be present in the concatenated result of both fields.
-        """
-        
-        f_name = "search_items()"
-        sql_conditions = []
-        params = {}
+    """
+    Performs a multi-keyword search across two database fields.
+    Each word must be present in the concatenated result of both fields.
+    """
 
-        # Get 1 condition per keyword to ensure all keywords match (AND logic)
-        for i, word in enumerate(keywords):
-            sql_concatenation = f"{field_1} || ' ' || {field_2}"
-            sql_text = f"LOWER({sql_concatenation})"
-            sql_condition = f"\n\t{sql_text} LIKE :word_{i}"
-            sql_conditions.append(sql_condition)
-            params[f"word_{i}"] = f"%{word.lower()}%"
+    f_name = "search_items()"
+    sql_conditions = []
+    params = {}
 
-        # Get SQL Clause with all conditions joined by AND
-        sql_clause = ' AND '.join(sql_conditions)
+    # Get 1 condition per keyword to ensure all keywords match (AND logic)
+    for i, word in enumerate(keywords):
+        sql_concatenation = f"{field_1} || ' ' || {field_2}"
+        sql_text = f"LOWER({sql_concatenation})"
+        sql_condition = f"\n\t{sql_text} LIKE :word_{i}"
+        sql_conditions.append(sql_condition)
+        params[f"word_{i}"] = f"%{word.lower()}%"
 
-        # Set SQL Query as a string
-        select_query = f"SELECT * FROM {table} WHERE {sql_clause}"
-        current_app.logger.debug(f"{f_name}:\n {select_query}")
+    # Get SQL Clause with all conditions joined by AND
+    sql_clause = " AND ".join(sql_conditions)
 
-        # Get Results from DB using raw SQL execution
-        results = db.session.execute(text(select_query), params)
-        nb_items = results.returns_rows
-        
-        if not nb_items :  # Case Undefined
-            return jsonify({"error": "DB error"}), 404
-        if nb_items > 0:   # Case OK : Products Found
-            items = results.fetchall()
-            # Mapping rows to dictionaries for JSON response
-            items_as_dicts = [dict(row._mapping) for row in items]
-            return jsonify(items_as_dicts), 200
-        else:              # Case OK : No Product found
-            return jsonify({f"message": f"No records contain {keywords}"}), 204
+    # Set SQL Query as a string
+    select_query = f"SELECT * FROM {table} WHERE {sql_clause}"
+    current_app.logger.debug(f"{f_name}:\n {select_query}")
+
+    # Get Results from DB using raw SQL execution
+    results = db.session.execute(text(select_query), params)
+    nb_items = results.returns_rows
+
+    if not nb_items:  # Case Undefined
+        return jsonify({"error": "DB error"}), 404
+    if nb_items > 0:  # Case OK : Products Found
+        items = results.fetchall()
+        # Mapping rows to dictionaries for JSON response
+        items_as_dicts = [dict(row._mapping) for row in items]
+        return jsonify(items_as_dicts), 200
+    else:  # Case OK : No Product found
+        return jsonify({f"message": f"No records contain {keywords}"}), 204
 
 
 def check_fields(body, fields):
@@ -143,13 +143,13 @@ def check_fields(body, fields):
 
 def get_user_attribute_in_db(data_in_token, attribute_name):
     """
-    Retrieves a specific attribute (like 'role' or 'id') for a user based on 
+    Retrieves a specific attribute (like 'role' or 'id') for a user based on
      the identity stored in the JWT payload.
     """
     # Get User login from Token and find record in DB
     email_in_token = data_in_token["login"]
     user_in_db = Utilisateur.query.filter_by(email=email_in_token).first()
-    
+
     # Use getattr to dynamically retrieve the requested field
     user_attribute = getattr(user_in_db, attribute_name, None)
     return user_attribute

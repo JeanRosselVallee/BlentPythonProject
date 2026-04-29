@@ -4,25 +4,28 @@
 from flask import Blueprint, render_template
 
 # Define the blueprint for web-related routes
-web_bp = Blueprint('web', __name__)
+web_bp = Blueprint("web", __name__)
 
 # --- ROUTES DEFINITION ---
 
-@web_bp.route('/')
+
+@web_bp.route("/")
 def index():
     """
     Redirects to the catalog page.
-    """    
+    """
     return render_template("catalog.html")
+
 
 @web_bp.route("/catalog")
 def catalog():
     """
     Main product view for all users.
-    Serves the catalog page where clients can browse products 
+    Serves the catalog page where clients can browse products
     and admins can access management tools.
     """
     return render_template("catalog.html")
+
 
 @web_bp.route("/login")
 def login():
@@ -32,6 +35,7 @@ def login():
     """
     return render_template("login.html")
 
+
 @web_bp.route("/register")
 def register():
     """
@@ -40,6 +44,7 @@ def register():
     """
     return render_template("register.html")
 
+
 @web_bp.route("/cart")
 def cart():
     """
@@ -47,6 +52,7 @@ def cart():
     Displays the current items selected by the client before checkout.
     """
     return render_template("cart.html")
+
 
 @web_bp.route("/orders")
 def orders():

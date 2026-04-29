@@ -1,4 +1,25 @@
+// This file defines the development container configuration for this Python project.
 {
+    // Use the official Python 3 image from Microsoft as the base for the container
     "name": "Python 3",
-    "image": "mcr.microsoft.com/devcontainers/python:3.11"
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+    // Installs the sqlite3 CLI tool and other helpful features automatically
+    "features": {
+        "ghcr.io/devcontainers/features/sqlite3:1": {}
+    },
+
+    // Runs once the container is created to ensure your Python environment is ready
+    "postCreateCommand": "pip install -r requirements.txt",
+
+    // Customizes the VS Code UI for this specific project
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter",
+                "qwtel.sqlite-viewer"
+            ]
+        }
+    }
 }

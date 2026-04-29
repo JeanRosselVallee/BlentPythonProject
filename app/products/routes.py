@@ -1,8 +1,8 @@
 # Products API Routes
-# This module provides the CRUD (Create, Read, Update, Delete) operations for the 
+# This module provides the CRUD (Create, Read, Update, Delete) operations for the
 # product catalog and includes a keyword-based search functionality.
 
-import app.app_utils as au # Custom utilities for app
+import app.app_utils as au  # Custom utilities for app
 
 from flask import Blueprint, request, jsonify, current_app
 from app.extensions import db
@@ -10,13 +10,11 @@ from app.database.model import Produit  #  DB Model Table
 from app.auth.decorators import requires_authorization
 
 # Blueprint of Routes for Products
-products_bp = Blueprint(
-    'products',  # id for routing
-    __name__ # current module's path
-    )
+products_bp = Blueprint("products", __name__)  # id for routing  # current module's path
 
 
- # --- ROUTES DEFINITION ---
+# --- ROUTES DEFINITION ---
+
 
 @products_bp.route("/produits", methods=["POST"])
 @requires_authorization
@@ -30,30 +28,34 @@ def create_product(data_in_token):
     user_role = au.get_user_attribute_in_db(data_in_token, "role")
 
     # Reject non-Admin Users
-    if user_role != "admin":  
-        return jsonify({"error": "User {email} not authorized to create products."}), 403
-    
+    if user_role != "admin":
+        return (
+            jsonify({"error": "User {email} not authorized to create products."}),
+            403,
+        )
+
     # Get Product Data from Request and validate fields
     submitted_data = request.get_json()
-    missing_fields = (not au.check_fields(
-        submitted_data, {
-            "nom", 
+    missing_fields = not au.check_fields(
+        submitted_data,
+        {
+            "nom",
             "description",
             "categorie",
             "prix",
             "quantite_stock",
-            }
-    ))
+        },
+    )
     if missing_fields:
         return jsonify({"error": "Missing fields."}), 400
-        
+
     # Map request data to the Produit model
     new_product = Produit(
         nom=submitted_data["nom"],
         description=submitted_data["description"],
         categorie=submitted_data["categorie"],
         prix=submitted_data["prix"],
-        quantite_stock=submitted_data["quantite_stock"]
+        quantite_stock=submitted_data["quantite_stock"],
     )
 
     # Create Product in DB
@@ -78,22 +80,25 @@ def update_product(product_id, data_in_token):
 
     # Check User is Admin
     if user_role != "admin":
-        return jsonify({"error": f"User {user_email} not authorized to update products."}), 403
-    
+        return (
+            jsonify({"error": f"User {user_email} not authorized to update products."}),
+            403,
+        )
+
     # Get Product Data from Request
     submitted_data = request.get_json()
-    
+
     # Check Product exists in DB
     product = Produit.query.get(product_id)
     if not product:
         return jsonify({"error": f"Product with id {product_id} not found."}), 404
-    
-    # Get Submitted Fields and update database record dynamically       
+
+    # Get Submitted Fields and update database record dynamically
     current_app.logger.debug(f"update_product:\n {submitted_data.keys()}")
     all_fields = {"nom", "description", "categorie", "prix", "quantite_stock"}
     for field in all_fields:
         field_is_available = au.check_fields(submitted_data, {field})
-        
+
         # Update Submitted Field in DB
         if field_is_available:
             setattr(product, field, submitted_data[field])
@@ -117,14 +122,17 @@ def delete_product(product_id, data_in_token):
     user_role = au.get_user_attribute_in_db(data_in_token, "role")
 
     # Reject non-Admin Users
-    if user_role != "admin":  
-        return jsonify({"error": f"User {user_email} not authorized to delete products."}), 403
+    if user_role != "admin":
+        return (
+            jsonify({"error": f"User {user_email} not authorized to delete products."}),
+            403,
+        )
 
     # Check Product in DB before deletion
     product = Produit.query.get(product_id)
     if not product:
         return jsonify({"error": f"Product with id {product_id} not found."}), 404
-    
+
     # Delete Product in DB
     db.session.delete(product)
     db.session.commit()
@@ -134,7 +142,10 @@ def delete_product(product_id, data_in_token):
     if not product:
         return jsonify({"info": f"Product with id {product_id} has been deleted."}), 200
     else:
-        return jsonify({"error": f"Product with id {product_id} could not be deleted."}), 404
+        return (
+            jsonify({"error": f"Product with id {product_id} could not be deleted."}),
+            404,
+        )
 
 
 @products_bp.route("/produits/<int:product_id>", methods=["GET"])
@@ -155,14 +166,14 @@ def get_products():
     - Otherwise: Returns the full list of products.
     """
     # Get Query Parameters from URL (e.g., /produits?keywords=intel&keywords=ssd)
-    keywords = request.args.getlist('keywords')
+    keywords = request.args.getlist("keywords")
 
     if keywords:
         # Search products by keywords in name & description using custom utility
         results = au.search_items(db, "Produit", "nom", "description", keywords)
-        
+
     else:
-        # Get all products from DB  
+        # Get all products from DB
         results = au.get_items(Produit)
-    
+
     return results

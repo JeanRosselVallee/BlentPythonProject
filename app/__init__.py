@@ -1,11 +1,12 @@
 # Application Factory and Initialization
-# This script initializes the Flask application, configures the database, 
+# This script initializes the Flask application, configures the database,
 # registers all functional blueprints, and ensures the database tables are created.
 
 import app.app_utils as au  # Custom Library
 import logging
 
 from flask import Flask
+
 # from config import Config  # debug SQLAlchemy queries cf. ../config.py
 
 # Blueprints for Authentication & API Routes
@@ -28,37 +29,34 @@ def create_app():
 
     # DB setup
     # Configuring the SQLite database location and disabling overhead tracking
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///digimarket.db" # ~URL to DB file
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///digimarket.db"  # ~URL to DB file
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     # app.config.from_object(Config)     # DEBUG: SQL Queries automatically printed
 
-    
     # Blueprint Routes Registration
 
     # - Routes for Authentication: Register & Login (prefixed with /auth)
-    app.register_blueprint(auth_bp, url_prefix='/auth')  
+    app.register_blueprint(auth_bp, url_prefix="/auth")
 
     # - Routes for Products (prefixed with /api)
-    app.register_blueprint(products_bp, url_prefix='/api')
+    app.register_blueprint(products_bp, url_prefix="/api")
 
     # - Routes for Orders (prefixed with /api)
-    app.register_blueprint(orders_bp, url_prefix='/api')
+    app.register_blueprint(orders_bp, url_prefix="/api")
 
     # - Routes for Frontend Web Pages (Main site routes, no prefix)
-    app.register_blueprint(web_bp) # No prefix
-
+    app.register_blueprint(web_bp)  # No prefix
 
     # DB R/W Access
     with app.app_context():
         """
-        Ensures that database tables defined in model.py are created 
+        Ensures that database tables defined in model.py are created
         within the application context if they do not already exist.
         """
         # Create DB as a file
-        db.create_all()  
+        db.create_all()
 
-    
     # Flask App created
     return app
 

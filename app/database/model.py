@@ -5,18 +5,22 @@
 from app.extensions import db
 from datetime import datetime, timezone
 
+
 class Utilisateur(db.Model):
     """
     Represents system users (Clients and Admins).
     - Stores credentials and roles.
     - Has a 'one-to-many' relationship with orders.
     """
+
     __tablename__ = "utilisateur"
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    mot_de_passe = db.Column(db.String(200), nullable=False) # Hashed password
+    mot_de_passe = db.Column(db.String(200), nullable=False)  # Hashed password
     nom = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default="client") # 'client' or 'admin'
+    role = db.Column(
+        db.String(50), nullable=False, default="client"
+    )  # 'client' or 'admin'
     date_creation = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     # Relationship: One user can have multiple orders
@@ -28,6 +32,7 @@ class Produit(db.Model):
     Represents items available for sale.
     - Tracks pricing and current inventory (quantite_stock).
     """
+
     __tablename__ = "produit"
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(200), nullable=False)
@@ -45,13 +50,16 @@ class Commande(db.Model):
     - Tracks status (en_attente, validée, expédiée, annulée).
     - Contains multiple line items.
     """
+
     __tablename__ = "commande"
     id = db.Column(db.Integer, primary_key=True)
     utilisateur_id = db.Column(
         db.Integer, db.ForeignKey("utilisateur.id"), nullable=False
     )
     date_commande = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    adresse_livraison = db.Column(db.String(500), nullable=True)  # Populated during checkout
+    adresse_livraison = db.Column(
+        db.String(500), nullable=True
+    )  # Populated during checkout
     statut = db.Column(db.String(50), nullable=False, default="en_attente")
 
     # Relationship: One order links to many line items (LigneCommande)
@@ -64,13 +72,10 @@ class LigneCommande(db.Model):
     - Captures the 'snapshot' price at the time of purchase.
     - Links a specific Order to a specific Product.
     """
+
     __tablename__ = "ligne_commande"
     id = db.Column(db.Integer, primary_key=True)
-    commande_id = db.Column(
-        db.Integer, db.ForeignKey("commande.id"), nullable=False
-    )
-    produit_id = db.Column(
-        db.Integer, db.ForeignKey("produit.id"), nullable=False
-    )
+    commande_id = db.Column(db.Integer, db.ForeignKey("commande.id"), nullable=False)
+    produit_id = db.Column(db.Integer, db.ForeignKey("produit.id"), nullable=False)
     quantite = db.Column(db.Integer, nullable=False)
-    prix_unitaire = db.Column(db.Float, nullable=False) # Price at moment of sale
+    prix_unitaire = db.Column(db.Float, nullable=False)  # Price at moment of sale
