@@ -25,7 +25,8 @@ def create_app():
     Factory function to create and configure the Flask app.
     Sets up SQLite URI, initializes extensions, and registers blueprints.
     """
-    app = Flask(__name__)
+    # 1. Initialize the app
+    app = Flask(__name__, instance_relative_config=True)  # will check db path
 
     # DB setup
     # Configuring the SQLite database location and disabling overhead tracking

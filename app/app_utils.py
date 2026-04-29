@@ -13,7 +13,10 @@ from app.database.model import Utilisateur
 
 # Load SECRET_PHRASE from .env
 load_dotenv()
-SECRET_PHRASE = os.getenv("SECRET_PHRASE")
+SECRET_PHRASE = os.getenv(
+    "SECRET_PHRASE", 
+    'ThisIsTheDefaultSecretPhraseWhenThereIsNoEnvFile'
+)
 
 
 # Token Generation for Authentication
