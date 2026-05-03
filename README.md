@@ -1,5 +1,4 @@
-"""
-# DigiMarket E-commerce API
+# [DigiMarket E-commerce API](https://jvisa4031.pythonanywhere.com)
 
 DigiMarket is a specialized PC hardware retailer diversifying into the online space. This project provides a robust REST API developed with **Flask**, using **SQLAlchemy** as an ORM and **SQLite** for data persistence.
 
@@ -149,8 +148,3 @@ Cf. PDF reports under `docs/`:
 - `Rapport Technique d'Ecosystème` : Backend infrastructure & API documentation
 - `Documentation Technique du FrontEnd` : Strategic frontend analysis, data flow & components 
 - `Guide de l'utilisateur - Interface Web` : User manual, role management & SQL maintenance
-
----
-
-"""
-```
