@@ -77,4 +77,21 @@ Get-Content Project1.txt | ForEach-Object {
     ""; "" 
 } | Out-File Full_Project_Snapshot.txt
 
-
+================= PythonAnywhere (Web Host) =================
+Bash Console :
+    git clone https://github.com/...
+    cd BlentPythonProject/
+    python3.11 -m venv ~/.virtualenvs/my-env
+    source ~/.virtualenvs/my-env/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    deactivate
+Web Tab :
+    Add a Web App
+    Select Manual Configuration
+        choose Python 3.11.
+    Virtualenv Path: Enter /home/jvisa4031/.virtualenvs/my-env
+    Edit the WSGI configuration file
+        "from run import app as application" gets app instance from run.py
+    Click the green Reload button.
+    Click on the title's link
